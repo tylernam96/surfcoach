@@ -1,0 +1,1 @@
+# SurfCoach MVP Scaffold

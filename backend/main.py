@@ -37,6 +37,10 @@ async def analyse(req: AnalyseRequest, background_tasks: BackgroundTasks):
     """
     supabase = get_supabase()
 
+    user_id = req.user_id
+    if not user_id or user_id == "anonymous":
+        user_id = str(uuid.uuid4())  # Generate a valid UUID
+
     # Create or update session row to 'processing'
     supabase.table("sessions").upsert({
         "id": req.session_id,
@@ -56,3 +60,25 @@ def get_session(session_id: str):
     if not result.data:
         raise HTTPException(status_code=404, detail="Session not found")
     return result.data
+
+@app.post("/refresh-video-url/{session_id}")
+def refresh_video_url(session_id: str):
+    supabase = get_supabase()
+    # Get the session to find the storage path
+    result = supabase.table("sessions").select("storage_path").eq("id", session_id).single().execute()
+    
+    if not result.data or not result.data.get("storage_path"):
+        raise HTTPException(404, "No video path found")
+    
+    # Generate new signed URL (longer expiry - 7 days)
+    new_url = supabase.storage.from_("surf-videos").create_signed_url(
+        result.data["storage_path"], 
+        60 * 60 * 24 * 7  # 7 days
+    )
+    
+    # Update the session with the new URL
+    supabase.table("sessions").update({
+        "video_url": new_url["signedURL"]
+    }).eq("id", session_id).execute()
+    
+    return {"video_url": new_url["signedURL"]}

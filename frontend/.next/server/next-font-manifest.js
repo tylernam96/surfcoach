@@ -1,0 +1,1 @@
+self.__NEXT_FONT_MANIFEST="{\"pages\":{},\"app\":{\"/Users/tylernam/Desktop/surfcoach/frontend/app/layout\":[\"static/media/4261f91ea7100e2e-s.p.woff2\",\"static/media/13971731025ec697-s.p.woff2\",\"static/media/9cc5b37ab1350db7-s.p.woff2\",\"static/media/e6099e249fd938cc-s.p.woff2\"]},\"appUsingSizeAdjust\":true,\"pagesUsingSizeAdjust\":false}"

@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+:root {
+  --font-serif: "Instrument Serif", Georgia, serif;
+  --font-sans: "DM Sans", system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+  }
+}
+
+@layer utilities {
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+  .font-sans {
+    font-family: var(--font-sans);
+  }
+}
+
+/* Wave animation */
+@keyframes wave-drift {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-20px); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.75); }
+}
+
+.wave-drift { animation: wave-drift 8s ease-in-out infinite; }
+.pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+
+/* Skeleton loading shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* Processing spin */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spin { animation: spin 1s linear infinite; }
+
+@theme {
+  --color-ocean-deep: #0a1628;
+  --color-ocean-mid: #0d2340;
+  --color-ocean-dark: #060d1a;
+  --color-ocean-card: #080f1e;
+  --color-ocean-teal: #0e7490;
+  --color-ocean-light: #38bdf8;
+  --color-ocean-hover: #7dd3fc;
+  --color-foam: #f0f9ff;
+  --color-sand: #fef3c7;
+  --color-coral: #f97316;
+
+  --background-image-hero-gradient: linear-gradient(
+    160deg, #020c1b 0%, #0a1628 40%, #0c2a4a 70%, #0e3d5c 100%
+  );
+}

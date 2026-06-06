@@ -15,7 +15,7 @@ import traceback
 from supabase_client import get_supabase
 from pose import process_video
 from analyse import analyse_pose_data
-from claude_client import get_surf_critique
+from claude import get_surf_critique
 
 
 def download_video(url: str, dest_path: str):
@@ -42,6 +42,9 @@ def process_video_job(session_id: str, video_url: str):
             print(f"[{session_id}] Running MediaPipe...")
             frame_data = process_video(video_path, output_path=output_path, sample_every=3)
             # frame_data is a list of dicts with joint angles per frame
+            print(f"[{session_id}] Extracted {len(frame_data)} frames")
+            if frame_data:
+                print(f"[{session_id}] First frame sample: {frame_data[0].get('knee_bend_left', 'N/A')}")
 
             if not frame_data:
                 raise ValueError("No pose landmarks detected — is a surfer visible in the video?")
@@ -66,7 +69,8 @@ def process_video_job(session_id: str, video_url: str):
                         f,
                         {"content-type": "video/mp4", "upsert": "true"},
                     )
-                annotated_url = supabase.storage.from_("surf-videos").get_public_url(storage_path)
+                signed = supabase.storage.from_("surf-videos").create_signed_url(storage_path, 60 * 60 * 24)  # 24hr expiry
+                annotated_url = signed["signedURL"] 
 
             # ── 6. Write results ─────────────────────────────────────────────
             supabase.table("sessions").update({
@@ -86,4 +90,3 @@ def process_video_job(session_id: str, video_url: str):
             "status": "error",
             "error_message": str(e),
         }).eq("id", session_id).execute()
-        

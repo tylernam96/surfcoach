@@ -58,26 +58,24 @@ function MetricBar({
   );
 }
 
-/* ── Flag card ── */
+/* ── Flag card — horizontal pill ── */
 function FlagCard({ flag }: { flag: Flag }) {
   return (
     <div
-      className={`flex items-start gap-3 rounded-xl border p-3 ${flagBgColor[flag.severity]}`}
+      className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 ${flagBgColor[flag.severity]}`}
     >
       <span
-        className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
+        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
         style={{ background: flagDotColor[flag.severity] }}
       />
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] text-white/70 leading-relaxed">
-          {flag.message}
-        </p>
-        {flag.pct_frames != null && (
-          <p className="text-[11px] text-white/30 mt-0.5">
-            Detected in {Math.round(flag.pct_frames * 100)}% of frames
-          </p>
-        )}
-      </div>
+      <p className="text-[12px] text-white/65 leading-snug flex-1">
+        {flag.message}
+      </p>
+      {flag.pct_frames != null && (
+        <span className="text-[11px] text-white/30 flex-shrink-0 tabular-nums">
+          {Math.round(flag.pct_frames * 100)}% of frames
+        </span>
+      )}
     </div>
   );
 }
@@ -149,67 +147,44 @@ export default function ResultsView({ session }: Props) {
         )}
       </Card>
 
-      {/* ── Metrics + Flags row ── */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Metrics */}
-        <Card>
-          <CardTitle>Biomechanics</CardTitle>
-          <div className="space-y-3.5">
-            {m.knee_bend_left?.mean != null && (
-              <MetricBar
-                label="Knee bend L"
-                value={m.knee_bend_left.mean}
-                color="#0e7490"
-              />
-            )}
-            {m.knee_bend_right?.mean != null && (
-              <MetricBar
-                label="Knee bend R"
-                value={m.knee_bend_right.mean}
-                color="#0e7490"
-              />
-            )}
-            {m.hip_hinge?.mean != null && (
-              <MetricBar
-                label="Hip hinge"
-                value={m.hip_hinge.mean}
-                color="#d97706"
-              />
-            )}
-            {m.shoulder_rotation?.mean != null && (
-              <MetricBar
-                label="Shoulder rot."
-                value={m.shoulder_rotation.mean}
-                color="#22c55e"
-              />
-            )}
-          </div>
-          {m.frames_analysed != null && m.total_frames != null && (
-            <p className="text-[11px] text-white/25 mt-4">
-              {m.frames_analysed} / {m.total_frames} frames analysed
-            </p>
+      {/* ── Biomechanics ── */}
+      <Card>
+        <CardTitle>Biomechanics</CardTitle>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+          {m.knee_bend_left?.mean != null && (
+            <MetricBar label="Knee bend L" value={m.knee_bend_left.mean} color="#0e7490" />
           )}
-        </Card>
+          {m.knee_bend_right?.mean != null && (
+            <MetricBar label="Knee bend R" value={m.knee_bend_right.mean} color="#0e7490" />
+          )}
+          {m.hip_hinge?.mean != null && (
+            <MetricBar label="Hip hinge" value={m.hip_hinge.mean} color="#d97706" />
+          )}
+          {m.shoulder_rotation?.mean != null && (
+            <MetricBar label="Shoulder rot." value={m.shoulder_rotation.mean} color="#22c55e" />
+          )}
+        </div>
+        {m.frames_analysed != null && m.total_frames != null && (
+          <p className="text-[11px] text-white/25 mt-4">
+            {m.frames_analysed} / {m.total_frames} frames analysed
+          </p>
+        )}
+      </Card>
 
-        {/* Flags */}
+      {/* ── Flags ── */}
+      {orderedFlags.length > 0 && (
         <Card>
           <CardTitle>
             Flags
-            {orderedFlags.length > 0 && (
-              <span className="ml-1 text-white/25">({orderedFlags.length})</span>
-            )}
+            <span className="ml-1 text-white/25">({orderedFlags.length})</span>
           </CardTitle>
-          {orderedFlags.length === 0 ? (
-            <p className="text-sm text-white/40">No flags raised — solid session.</p>
-          ) : (
-            <div className="space-y-2">
-              {orderedFlags.map((flag, i) => (
-                <FlagCard key={i} flag={flag} />
-              ))}
-            </div>
-          )}
+          <div className="space-y-2">
+            {orderedFlags.map((flag, i) => (
+              <FlagCard key={i} flag={flag} />
+            ))}
+          </div>
         </Card>
-      </div>
+      )}
 
       {/* ── Prioritised tips ── */}
       {critique.tips?.length > 0 && (

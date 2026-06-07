@@ -401,6 +401,8 @@ export default function VideoPlayer({ originalUrl, annotatedUrl, onVideoError }:
   const [overlayEnabled, setOverlayEnabled] = useState(true);
   const [currentMetrics, setCurrentMetrics] = useState<Metrics | null>(null);
   const [scriptsLoaded, setScriptsLoaded] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -415,6 +417,11 @@ export default function VideoPlayer({ originalUrl, annotatedUrl, onVideoError }:
       "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js",
       "https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js",
     ];
+
+      if (window.Pose) {
+    setScriptsLoaded(true);
+    return;
+  }
 
     let loaded = 0;
     const onLoad = () => {
@@ -474,8 +481,8 @@ export default function VideoPlayer({ originalUrl, annotatedUrl, onVideoError }:
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      canvas.width = videoRef.current.videoWidth || canvas.offsetWidth;
-      canvas.height = videoRef.current.videoHeight || canvas.offsetHeight;
+//      canvas.width = videoRef.current.videoWidth || canvas.offsetWidth;
+//      canvas.height = videoRef.current.videoHeight || canvas.offsetHeight;
 
       if (!overlayEnabled || !results.poseLandmarks) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -544,7 +551,14 @@ console.log("initialize", pose.initialize);
   };
 
   const handleLoadedMetadata = () => {
-    if (videoRef.current) setDuration(videoRef.current.duration);
+    if (!videoRef.current) return;
+    setDuration(videoRef.current.duration);
+    const { videoWidth, videoHeight } = videoRef.current;
+    setIsPortrait(videoHeight > videoWidth);
+    if (canvasRef.current) {
+      canvasRef.current.width = videoWidth;
+      canvasRef.current.height = videoHeight;
+    }
   };
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -563,18 +577,26 @@ console.log("initialize", pose.initialize);
 
   return (
     <div className="rounded-2xl overflow-hidden bg-black relative group">
-      {/* Video + Canvas stack */}
-      <div className="relative w-full aspect-video">
+      {/* Video + Canvas stack — adapts to portrait or landscape */}
+      <div
+        className={`relative w-full ${
+          isPortrait
+            ? expanded
+              ? "aspect-[9/16]"   // full portrait
+              : "aspect-[9/14]"   // slightly cropped portrait (shows most of rider)
+            : "aspect-video"      // landscape 16:9
+        }`}
+      >
         <video
           ref={videoRef}
           src={originalUrl}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
           onEnded={() => setPlaying(false)}
           onError={() => {
             if (onVideoError) onVideoError();
-           }}
+          }}
           playsInline
           crossOrigin="anonymous"
         />
@@ -608,6 +630,27 @@ console.log("initialize", pose.initialize);
               {Math.round(currentMetrics.confidence * 100)}% confidence
             </span>
           </div>
+        )}
+
+        {/* Expand / collapse button for portrait videos */}
+        {isPortrait && (
+          <button
+            onClick={() => setExpanded((e) => !e)}
+            className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1.5 text-white/60 hover:text-white transition-colors"
+          >
+            {expanded ? (
+              // Compress icon
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M4.5 1v3.5H1M7.5 1v3.5H11M4.5 11V7.5H1M7.5 11V7.5H11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+            ) : (
+              // Expand icon
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M1 4.5V1h3.5M11 4.5V1H7.5M1 7.5V11h3.5M11 7.5V11H7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+            )}
+            <span className="text-[10px]">{expanded ? "Fit" : "Full"}</span>
+          </button>
         )}
       </div>
 

@@ -27,6 +27,25 @@ def download_video(url: str, dest_path: str):
             f.write(chunk)
 
 
+def compress_video(input_path: str, output_path: str, target_mb: int = 40):
+    """Re-encode with ffmpeg targeting a file size under target_mb."""
+    import subprocess, json
+    probe = subprocess.run(
+        ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", input_path],
+        capture_output=True, text=True, check=True,
+    )
+    duration = float(json.loads(probe.stdout)["format"]["duration"])
+    target_bits = target_mb * 8 * 1024 * 1024
+    bitrate = int(target_bits / duration * 0.92)  # 8% headroom
+    subprocess.run([
+        "ffmpeg", "-y", "-i", input_path,
+        "-c:v", "libx264", "-b:v", str(bitrate),
+        "-preset", "fast", "-movflags", "+faststart",
+        "-an",  # annotated video has no audio
+        output_path,
+    ], check=True, capture_output=True)
+
+
 def process_video_job(session_id: str, video_url: str):
     supabase = get_supabase()
 
@@ -62,15 +81,20 @@ def process_video_job(session_id: str, video_url: str):
             # ── 5. Upload annotated video to Supabase Storage ────────────────
             annotated_url = None
             if os.path.exists(output_path):
+                print(f"[{session_id}] Compressing annotated video...")
+                compressed_path = output_path.replace(".mp4", "_compressed.mp4")
+                compress_video(output_path, compressed_path, target_mb=40)
+
                 storage_path = f"annotated/{session_id}.mp4"
-                with open(output_path, "rb") as f:
+                with open(compressed_path, "rb") as f:
                     supabase.storage.from_("surf-videos").upload(
                         storage_path,
                         f,
                         {"content-type": "video/mp4", "upsert": "true"},
                     )
+                os.remove(compressed_path)
                 signed = supabase.storage.from_("surf-videos").create_signed_url(storage_path, 60 * 60 * 24)  # 24hr expiry
-                annotated_url = signed["signedURL"] 
+                annotated_url = signed["signedURL"]
 
             # ── 6. Write results ─────────────────────────────────────────────
             supabase.table("sessions").update({

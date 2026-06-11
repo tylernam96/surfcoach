@@ -28,7 +28,7 @@ export function Logo() {
         className="font-serif text-[20px] text-white tracking-tight"
         style={{ fontFamily: "var(--font-serif)" }}
       >
-        Surf<span className="text-ocean-light">Coach</span>
+        Surf<span className="text-ocean-light">y</span>
       </span>
     </Link>
   );
@@ -42,14 +42,6 @@ export function Nav() {
       <ul className="flex items-center gap-8 list-none m-0 p-0">
         <li>
           <Link
-            href="#"
-            className="text-white/60 no-underline text-sm font-light hover:text-white transition-colors"
-          >
-            How it works
-          </Link>
-        </li>
-        <li>
-          <Link
             href="/dashboard"
             className="text-white/60 no-underline text-sm font-light hover:text-white transition-colors"
           >
@@ -58,10 +50,10 @@ export function Nav() {
         </li>
         <li>
           <Link
-            href="/"
+            href="/pricing"
             className="bg-ocean-light text-ocean-deep text-sm font-medium px-5 py-2 rounded-lg no-underline hover:bg-ocean-hover transition-colors"
           >
-            Upload
+            Get started
           </Link>
         </li>
       </ul>

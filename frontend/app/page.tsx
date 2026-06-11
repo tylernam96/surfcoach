@@ -2,6 +2,15 @@
 
 import VideoUploader from "@/components/VideoUploader";
 import { Nav, WaveDivider, SectionLabel, SectionHeading } from "@/components/UI";
+import { useRouter } from "next/navigation";
+
+const BULLETS = [
+  "Analyses your surfing with precision no human coach can match.",
+  "Delivers the exact fix YOU need — based on your real biomechanical data.",
+  "Measures your form against elite surfers to show exactly where you stack up.",
+  "Works on any clip — side-on, behind, or drone footage.",
+  "Placeholder bullet point five — edit me.",
+];
 
 const FEATURES = [
   {
@@ -87,38 +96,53 @@ export default function Home() {
           {/* Eyebrow */}
           <div className="inline-flex items-center gap-2 bg-ocean-teal/20 border border-ocean-light/25 rounded-full px-3.5 py-1.5 text-[11px] font-medium text-ocean-light tracking-[0.08em] uppercase mb-7">
             <span className="w-1.5 h-1.5 bg-ocean-light rounded-full pulse-dot" />
-            AI Surf Coach · MediaPipe + Claude
+            AI Surf Coach · Built by surfers, for surfers
           </div>
 
           <h1
-            className="font-serif text-white leading-[1.05] tracking-[-0.05em] mb-6"
+            className="font-serif text-white leading-[1.05] tracking-[-0.05em] mb-6 max-w-3xl"
             style={{
               fontFamily: "var(--font-serif)",
-              fontSize: "clamp(52px, 9vw, 88px)",
+              fontSize: "clamp(42px, 7vw, 76px)",
             }}
           >
-            Your form,
+            The first AI surf analyzer
             <br />
-            <em className="text-ocean-light">scientifically</em>
+            <em className="text-ocean-light">built by surfers,</em>
             <br />
-            coached.
+            for surfers.
           </h1>
 
-          <p className="text-[17px] font-light text-white/50 max-w-md leading-relaxed mb-11">
-            Upload a surf video and get professional-level biomechanical analysis
-            in under 60 seconds. Know exactly what to fix next session.
+          <p className="text-[17px] font-light text-white/55 max-w-xl leading-relaxed mb-10">
+            Surfy looks at your surfing and adapts to fix your stance based on{" "}
+            <span className="text-white/80 font-normal">YOUR</span> real-time biomechanical
+            data — while measuring you against the best surfers in the world.
           </p>
 
+          {/* Bullet points */}
+          <ul className="text-left mb-11 space-y-3 max-w-lg w-full">
+            {BULLETS.map((b, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <span className="mt-[3px] flex-shrink-0 w-5 h-5 rounded-full bg-ocean-teal/30 border border-ocean-light/30 flex items-center justify-center">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M2 5l2.5 2.5L8 3" stroke="#38bdf8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+                <span className="text-[15px] text-white/65 leading-snug">{b}</span>
+              </li>
+            ))}
+          </ul>
+
+          {/* CTAs */}
           <div className="flex items-center gap-4 flex-wrap justify-center">
             <a
-              href="#upload"
-              className="inline-flex items-center gap-2 bg-ocean-light text-ocean-deep font-medium text-[15px] px-7 py-3.5 rounded-xl hover:bg-ocean-hover transition-all hover:-translate-y-0.5"
+              href="/pricing"
+              className="inline-flex items-center gap-2 bg-ocean-light text-ocean-deep font-semibold text-[15px] px-8 py-4 rounded-xl hover:bg-ocean-hover transition-all hover:-translate-y-0.5 shadow-lg shadow-ocean-light/20"
             >
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                <path d="M7.5 2v7M5 6l2.5 3 2.5-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M2 12h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              Let&rsquo;s Get Started
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M3 7h8M8 4l3 3-3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Upload a session
             </a>
             <a
               href="/dashboard"
@@ -126,30 +150,6 @@ export default function Home() {
             >
               View sessions
             </a>
-          </div>
-
-          {/* Stats */}
-          <div className="flex items-center gap-10 mt-14 pt-10 border-t border-white/10">
-            <div className="text-center">
-              <div className="font-serif text-[32px] text-white leading-none mb-1" style={{ fontFamily: "var(--font-serif)" }}>
-                9<span className="text-ocean-light">+</span>
-              </div>
-              <div className="text-[11px] text-white/35 tracking-[0.06em] uppercase">Metrics</div>
-            </div>
-            <div className="w-px h-10 bg-white/10" />
-            <div className="text-center">
-              <div className="font-serif text-[32px] text-white leading-none mb-1" style={{ fontFamily: "var(--font-serif)" }}>
-                <span className="text-ocean-light">~</span>45<span className="text-ocean-light">s</span>
-              </div>
-              <div className="text-[11px] text-white/35 tracking-[0.06em] uppercase">Analysis time</div>
-            </div>
-            <div className="w-px h-10 bg-white/10" />
-            <div className="text-center">
-              <div className="font-serif text-[32px] text-white leading-none mb-1" style={{ fontFamily: "var(--font-serif)" }}>
-                <span className="text-ocean-light">AI</span>
-              </div>
-              <div className="text-[11px] text-white/35 tracking-[0.06em] uppercase">Claude-powered</div>
-            </div>
           </div>
         </div>
 
@@ -217,7 +217,7 @@ export default function Home() {
       {/* ── FOOTER ── */}
       <footer className="bg-[#040a14] px-12 py-12 flex items-center justify-between border-t border-white/5">
         <span className="font-serif text-[18px] text-white/40" style={{ fontFamily: "var(--font-serif)" }}>
-          SurfCoach
+          Surfy
         </span>
         <div className="flex gap-6">
           {["Privacy", "Terms", "GitHub"].map((l) => (
@@ -226,7 +226,7 @@ export default function Home() {
             </a>
           ))}
         </div>
-        <span className="text-[12px] text-white/20">© 2026 SurfCoach</span>
+        <span className="text-[12px] text-white/20">© 2026 Surfy</span>
       </footer>
     </main>
   );

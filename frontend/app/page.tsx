@@ -12,98 +12,111 @@ const BULLETS = [
   "Placeholder bullet point five — edit me.",
 ];
 
-const FEATURES = [
+const PILLARS = [
   {
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M10 3l-3.5 8h7L10 17" stroke="#0e7490" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-    iconBg: "bg-ocean-teal/20",
-    title: "Knee bend",
-    desc: "Track compression depth on both legs across the whole ride.",
+    id: "position",
+    label: "Position",
+    tagline: "Balance & Positioning",
+    color: "#38bdf8",
+    border: "rgba(56,189,248,0.14)",
+    glow: "rgba(56,189,248,0.04)",
+    summary: "Stability and connection are the names of the game when it comes to surfing waves. Surfy tracks your stance width, weight distribution, and precise rail engagement. By mastering these micro-adjustments, you'll stay completely locked into the wave's power pocket, turning erratic rides into smooth, unbreakable control.",
+    metrics: [
+      {
+        name: "Stance & Balance",
+        desc: "Foot width vs. shoulder width, centre of mass over feet, and front/back-foot bias detection.",
+      },
+      {
+        name: "Rail Engagement",
+        desc: "Body lean angle via shoulder and hip alignment — are you committing weight to the rail in turns?",
+      },
+    ],
   },
   {
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M4 10a6 6 0 0112 0" stroke="#d97706" strokeWidth="1.5" strokeLinecap="round" />
-        <path d="M10 4v3M4 10h3M13 10h3" stroke="#d97706" strokeWidth="1.4" strokeLinecap="round" />
-      </svg>
-    ),
-    iconBg: "bg-amber-500/15",
-    title: "Hip hinge",
-    desc: "Detect weight stacking — forward over fins vs. centred.",
+    id: "power",
+    label: "Power",
+    tagline: "Speed Generation",
+    color: "#f97316",
+    border: "rgba(249,115,22,0.14)",
+    glow: "rgba(249,115,22,0.04)",
+    summary: "Your body should move like a coiled spring through every turn — you COMPRESS into the board to absorb energy, and then EXTEND to create speed. SURFY teaches you the exact knee and hip mechanics needed for efficient pumping.",
+    metrics: [
+      {
+        name: "Compression & Extension",
+        desc: "Knee angles and hip height — measuring depth, speed, and timing of each cycle.",
+      },
+      {
+        name: "Pump Detection",
+        desc: "Frequency, amplitude, and smoothness of repeated compression-extension cycles.",
+      },
+      {
+        name: "Shoulder & Hip Rotation",
+        desc: "Torso separation and shoulder-hip delta — does your upper body correctly lead turns?",
+      },
+    ],
   },
   {
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M5 10h10M10 5l5 5-5 5" stroke="#f97316" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-    iconBg: "bg-coral/10",
-    title: "Shoulder rotation",
-    desc: "Measure how your upper body opens to drive speed and direction.",
-  },
-  {
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <circle cx="10" cy="8" r="3.5" stroke="#38bdf8" strokeWidth="1.4" />
-        <path d="M6.5 17c0-1.93 1.57-3.5 3.5-3.5s3.5 1.57 3.5 3.5" stroke="#38bdf8" strokeWidth="1.4" strokeLinecap="round" />
-      </svg>
-    ),
-    iconBg: "bg-ocean-light/15",
-    title: "Gaze direction",
-    desc: "Spots board-watching — the #1 habit that kills speed.",
-  },
-  {
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <rect x="4" y="8" width="12" height="8" rx="2" stroke="#22c55e" strokeWidth="1.4" />
-        <path d="M7.5 8V6a2.5 2.5 0 015 0v2" stroke="#22c55e" strokeWidth="1.4" strokeLinecap="round" />
-      </svg>
-    ),
-    iconBg: "bg-green-500/15",
-    title: "Stance width",
-    desc: "Check foot placement relative to your height and board size.",
-  },
-  {
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M4 14c2-4 4-2 6-5 2-3 4-1 6-5" stroke="#a855f7" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-    ),
-    iconBg: "bg-purple-500/15",
-    title: "Centre of mass",
-    desc: "Reveals whether you're riding a compression arc or surfing flat.",
+    id: "flow",
+    label: "Flow",
+    tagline: "Movement Sequencing",
+    color: "#a855f7",
+    border: "rgba(168,85,247,0.14)",
+    glow: "rgba(168,85,247,0.04)",
+    summary: "SURFY analyzes your coordination, tracking the critical sequence of eyes → arms → shoulders → hips. It teaches you to look where you want to go and link maneuvers seamlessly.",
+    metrics: [
+      {
+        name: "Head & Eye Direction",
+        desc: "Face orientation and nose direction — looking where you're going, not down at the board.",
+      },
+      {
+        name: "Arm Usage",
+        desc: "Position, symmetry, and movement timing — do your arms initiate turns and generate momentum?",
+      },
+      {
+        name: "Flow & Linking",
+        desc: "Measuring dead time between movements and ability to link pumps, bottom turns, and cutbacks.",
+      },
+    ],
   },
 ];
 
 export default function Home() {
   return (
-    <main className="bg-ocean-deep min-h-screen">
-      {/* ── HERO ── */}
-      <section
-        className="relative min-h-screen flex flex-col overflow-hidden"
+    <>
+      {/* ── FIXED BACKGROUND PHOTO ── */}
+      <div
         style={{
-          background:
-            "linear-gradient(160deg, #020c1b 0%, #0a1628 40%, #0c2a4a 70%, #0e3d5c 100%)",
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+          backgroundImage: "url('/surfdronephoto.jpeg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: "fixed",
         }}
-      >
+      />
+      {/* Dark overlay so text stays readable */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1,
+          background: "rgba(20, 20, 20, 0.55)",
+        }}
+      />
+
+      <main className="relative min-h-screen" style={{ zIndex: 2 }}>
+        {/* Sticky nav */}
         <Nav />
 
-        {/* Hero body */}
-        <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-6 pb-36">
-          {/* Eyebrow */}
-          <div className="inline-flex items-center gap-2 bg-ocean-teal/20 border border-ocean-light/25 rounded-full px-3.5 py-1.5 text-[11px] font-medium text-ocean-light tracking-[0.08em] uppercase mb-7">
-            <span className="w-1.5 h-1.5 bg-ocean-light rounded-full pulse-dot" />
-            AI Surf Coach · Built by surfers, for surfers
-          </div>
-
+        {/* ── HERO ── */}
+        <section className="min-h-screen flex flex-col items-center justify-center text-center px-6 pb-24 pt-32">
           <h1
             className="font-serif text-white leading-[1.05] tracking-[-0.05em] mb-6 max-w-3xl"
             style={{
               fontFamily: "var(--font-serif)",
               fontSize: "clamp(42px, 7vw, 76px)",
+              textShadow: "0 2px 24px rgba(0,0,0,0.6)",
             }}
           >
             The first AI surf analyzer
@@ -113,9 +126,9 @@ export default function Home() {
             for surfers.
           </h1>
 
-          <p className="text-[17px] font-light text-white/55 max-w-xl leading-relaxed mb-10">
+          <p className="text-[17px] font-light text-white/70 max-w-xl leading-relaxed mb-10" style={{ textShadow: "0 1px 12px rgba(0,0,0,0.5)" }}>
             Surfy looks at your surfing and adapts to fix your stance based on{" "}
-            <span className="text-white/80 font-normal">YOUR</span> real-time biomechanical
+            <span className="text-white font-normal">YOUR</span> real-time biomechanical
             data — while measuring you against the best surfers in the world.
           </p>
 
@@ -128,7 +141,7 @@ export default function Home() {
                     <path d="M2 5l2.5 2.5L8 3" stroke="#38bdf8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </span>
-                <span className="text-[15px] text-white/65 leading-snug">{b}</span>
+                <span className="text-[15px] text-white/80 leading-snug" style={{ textShadow: "0 1px 8px rgba(0,0,0,0.5)" }}>{b}</span>
               </li>
             ))}
           </ul>
@@ -146,88 +159,117 @@ export default function Home() {
             </a>
             <a
               href="/dashboard"
-              className="inline-flex items-center gap-2 bg-transparent text-white/65 border border-white/15 font-light text-[15px] px-7 py-3.5 rounded-xl hover:border-white/35 hover:text-white transition-all"
+              className="inline-flex items-center gap-2 bg-transparent text-white/75 border border-white/25 font-light text-[15px] px-7 py-3.5 rounded-xl hover:border-white/50 hover:text-white transition-all"
             >
               View sessions
             </a>
           </div>
-        </div>
+        </section>
 
-        {/* Wave divider */}
-        <div className="absolute bottom-0 left-0 right-0 z-0">
-          <WaveDivider />
-        </div>
-      </section>
-
-      {/* ── UPLOAD ── */}
-      <section id="upload" className="bg-ocean-card py-24 px-12">
-        <div className="max-w-2xl mx-auto text-center mb-12">
-          <SectionLabel>Upload</SectionLabel>
-          <SectionHeading className="text-[clamp(36px,5vw,52px)] mb-4">
-            Drop your clip.
-            <br />
-            <em className="text-ocean-light">We&rsquo;ll do the rest.</em>
-          </SectionHeading>
-          <p className="text-[16px] font-light text-white/45 leading-relaxed">
-            Works with any angle — side-on, behind, or drone. The AI adapts to
-            what it can see.
-          </p>
-        </div>
-        <VideoUploader />
-      </section>
-
-      {/* ── FEATURES ── */}
-      <section className="bg-ocean-dark py-24 px-12">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <SectionLabel>What we analyse</SectionLabel>
-            <SectionHeading className="text-[clamp(36px,5vw,52px)]">
-              Nine metrics.{" "}
-              <em className="text-ocean-light">One complete picture.</em>
-            </SectionHeading>
-          </div>
-
+        {/* ── UPLOAD — frosted panel ── */}
+        <section id="upload" className="py-6 px-6">
           <div
-            className="grid grid-cols-3 gap-px rounded-2xl overflow-hidden"
-            style={{ background: "rgba(255,255,255,0.04)" }}
+            className="max-w-5xl mx-auto rounded-3xl px-12 py-16"
+            style={{
+              background: "rgba(8, 18, 38, 0.45)",
+              backdropFilter: "blur(12px)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              boxShadow: "0 8px 64px rgba(0,0,0,0.25)",
+            }}
           >
-            {FEATURES.map((f) => (
-              <div
-                key={f.title}
-                className="bg-ocean-card hover:bg-[#0c1830] transition-colors p-8"
-              >
+            <div className="text-center mb-12">
+              <SectionHeading className="text-[clamp(32px,4.5vw,48px)] mb-4">
+                Drop your clip.
+                <br />
+                <em className="text-ocean-light">We&rsquo;ll do the rest.</em>
+              </SectionHeading>
+              <p className="text-[15px] font-light text-white/45 leading-relaxed">
+                Works with any angle — side-on, behind, or drone. The AI adapts to what it can see.
+              </p>
+            </div>
+            <VideoUploader />
+          </div>
+        </section>
+
+        {/* ── FEATURES — frosted panel ── */}
+        <section className="py-6 px-6 pb-16">
+          <div
+            className="max-w-5xl mx-auto rounded-3xl px-12 py-16"
+            style={{
+              background: "rgba(8, 18, 38, 0.45)",
+              backdropFilter: "blur(12px)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              boxShadow: "0 8px 64px rgba(0,0,0,0.25)",
+            }}
+          >
+            <div className="text-center mb-14">
+              <SectionHeading className="text-[clamp(32px,4.5vw,52px)]">
+                What <em className="text-ocean-light">SURFY</em> is teaching you
+              </SectionHeading>
+              <p className="text-[15px] font-light text-white/45 leading-relaxed mt-4">
+                It breaks things down into three core mechanics
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-5">
+              {PILLARS.map((pillar) => (
                 <div
-                  className={`w-11 h-11 rounded-[11px] ${f.iconBg} flex items-center justify-center mb-5`}
+                  key={pillar.id}
+                  className="rounded-2xl overflow-hidden"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: `1px solid ${pillar.border}`,
+                  }}
                 >
-                  {f.icon}
+                  {/* Colored top bar */}
+                  <div className="h-1.5 w-full" style={{ background: pillar.color }} />
+                  <div className="p-8 text-center">
+                    <h3
+                      className="font-bold text-[22px] tracking-widest uppercase mb-5"
+                      style={{ color: pillar.color, fontFamily: "var(--font-serif)" }}
+                    >
+                      {pillar.label}
+                    </h3>
+                    <p className="text-[14px] text-white/55 leading-relaxed">{pillar.summary}</p>
+                  </div>
                 </div>
-                <h3
-                  className="font-serif text-[19px] text-white mb-2"
-                  style={{ fontFamily: "var(--font-serif)" }}
-                >
-                  {f.title}
-                </h3>
-                <p className="text-[13px] text-white/40 leading-relaxed">{f.desc}</p>
-              </div>
+              ))}
+            </div>
+
+            {/* CTA button */}
+            <div className="text-center mt-14">
+              <a
+                href="/pricing"
+                className="inline-flex items-center gap-2 bg-ocean-light text-ocean-deep font-bold text-[16px] px-10 py-4 rounded-full hover:bg-ocean-hover transition-all hover:-translate-y-0.5 shadow-lg shadow-ocean-light/20"
+              >
+                I want to IMPROVE my surfing
+              </a>
+            </div>
+          </div>
+        </section>
+
+        {/* ── FOOTER ── */}
+        <footer
+          className="px-12 py-10 flex items-center justify-between"
+          style={{
+            background: "rgba(4, 10, 20, 0.85)",
+            backdropFilter: "blur(12px)",
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+          }}
+        >
+          <span className="font-serif text-[18px] text-white/40" style={{ fontFamily: "var(--font-serif)" }}>
+            Surfy
+          </span>
+          <div className="flex gap-6">
+            {["Privacy", "Terms", "GitHub"].map((l) => (
+              <a key={l} href="#" className="text-[13px] text-white/30 hover:text-white/60 transition-colors no-underline">
+                {l}
+              </a>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ── FOOTER ── */}
-      <footer className="bg-[#040a14] px-12 py-12 flex items-center justify-between border-t border-white/5">
-        <span className="font-serif text-[18px] text-white/40" style={{ fontFamily: "var(--font-serif)" }}>
-          Surfy
-        </span>
-        <div className="flex gap-6">
-          {["Privacy", "Terms", "GitHub"].map((l) => (
-            <a key={l} href="#" className="text-[13px] text-white/30 hover:text-white/60 transition-colors no-underline">
-              {l}
-            </a>
-          ))}
-        </div>
-        <span className="text-[12px] text-white/20">© 2026 Surfy</span>
-      </footer>
-    </main>
+          <span className="text-[12px] text-white/20">© 2026 Surfy</span>
+        </footer>
+      </main>
+    </>
   );
 }

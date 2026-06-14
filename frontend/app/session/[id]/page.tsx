@@ -56,6 +56,23 @@ export default function SessionPage() {
 
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [annotatedUrl, setAnnotatedUrl] = useState<string | null>(null);
+
+  const refreshSignedUrls = async (s: Session) => {
+    const EXPIRY = 60 * 60 * 24 * 7; // 7 days
+    const path = s.video_path ?? s.video_url;
+    const annotatedPath = s.annotated_video_path ?? s.annotated_video_url;
+
+    if (path) {
+      const { data } = await supabase.storage.from("surf-videos").createSignedUrl(path, EXPIRY);
+      if (data) setVideoUrl(data.signedUrl);
+    }
+    if (annotatedPath) {
+      const { data } = await supabase.storage.from("surf-videos").createSignedUrl(annotatedPath, EXPIRY);
+      if (data) setAnnotatedUrl(data.signedUrl);
+    }
+  };
 
   const fetchSession = async (sessionId: string) => {
     const { data, error } = await supabase
@@ -63,7 +80,11 @@ export default function SessionPage() {
       .select("*")
       .eq("id", sessionId)
       .single();
-    if (!error && data) setSession(data as Session);
+    if (!error && data) {
+      const s = data as Session;
+      setSession(s);
+      await refreshSignedUrls(s);
+    }
     setLoading(false);
   };
 
@@ -114,8 +135,8 @@ export default function SessionPage() {
           {/* Left: video + processing / error states */}
           <div className="space-y-4">
             <VideoPlayer
-              originalUrl={session.video_url}
-              annotatedUrl={session.annotated_video_url}
+              originalUrl={videoUrl}
+              annotatedUrl={annotatedUrl}
             />
 
             {session.status === "processing" && (

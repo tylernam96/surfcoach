@@ -4,8 +4,8 @@ import { useState, useRef, DragEvent, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
-console.log("SUPABASE URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
-console.log("SUPABASE KEY:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+//console.log("SUPABASE URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+//console.log("SUPABASE KEY:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -81,17 +81,19 @@ export default function VideoUploader() {
 
       setProgress(95);
 
+      // Generate a short-lived signed URL just for the backend download
       const { data: signedData, error: signError } = await supabase.storage
         .from("surf-videos")
         .createSignedUrl(filePath, 3600);
 
       if (signError || !signedData) throw signError;
 
-      // Create session row
+      // Create session row — store the storage path, not a signed URL.
+      // Signed URLs expire; the frontend regenerates them on demand.
       const { data: session, error: dbError } = await supabase
         .from("sessions")
         .insert({
-          video_url: signedData.signedUrl,
+          video_path: filePath,  // e.g. "videos/1234567890-abc123.mp4"
           status: "processing",
         })
         .select()
@@ -106,13 +108,13 @@ export default function VideoUploader() {
 }
 
 
-      // Trigger backend
+      // Trigger backend — signed URL is only used for the one-time download
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/analyse`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           session_id: session.id,
-          video_url: signedData.signedUrl,
+          video_url: signedData.signedUrl,  // backend uses this to download once
           user_id: userId,
         }),
       });
@@ -120,12 +122,17 @@ export default function VideoUploader() {
       setProgress(100);
       router.push(`/session/${session.id}`);
     } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "Upload failed. Please try again."
-      );
-      setUploading(false);
-      setProgress(0);
-    }
+  console.error("Upload error:", err);
+  setError(
+    err instanceof Error
+      ? err.message
+      : typeof err === "object" && err !== null && "message" in err
+      ? String((err as { message: unknown }).message)
+      : JSON.stringify(err)
+  );
+  setUploading(false);
+  setProgress(0);
+}
   };
 
   return (

@@ -57,6 +57,12 @@ export default function Dashboard() {
     setLoading(false);
   };
 
+  const handleDelete = async (sessionId: string) => {
+  if (!confirm("Delete this session? This cannot be undone.")) return;
+  const { error } = await supabase.from("sessions").delete().eq("id", sessionId);
+  if (!error) setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+};
+
   useEffect(() => {
     fetchSessions();
     // Poll while any sessions are processing
@@ -120,49 +126,68 @@ export default function Dashboard() {
               </Link>
             </div>
           ) : (
-            sessions.map((session) => (
-              <Link
-                key={session.id}
-                href={`/session/${session.id}`}
-                className="flex items-center gap-5 bg-white/[0.03] border border-subtle rounded-2xl px-6 py-4 hover:border-ocean-light/20 hover:bg-ocean-teal/5 hover:translate-x-1 transition-all no-underline group"
-              >
-                {/* Thumbnail placeholder */}
-                <div className="w-[72px] h-12 rounded-lg bg-gradient-to-br from-ocean-mid to-ocean-deep flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" opacity="0.4">
-                    <path d="M3 12c1.5-4 3.5-2 6-5 2.5-3 4.5-1 6-4" stroke="#38bdf8" strokeWidth="1.3" strokeLinecap="round" />
-                  </svg>
-                </div>
+sessions.map((session) => (
+  <div
+    key={session.id}
+    className="flex items-center border border-subtle rounded-2xl hover:border-ocean-light/20 hover:translate-x-1 transition-all group overflow-hidden"
+    style={{ background: "rgba(255,255,255,0.03)" }}
+  >
+    <Link
+      href={`/session/${session.id}`}
+      className="flex items-center gap-5 flex-1 min-w-0 px-6 py-4 no-underline"
+    >
+      {/* Thumbnail */}
+      <div
+        className="rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
+        style={{ width: 72, height: 48, background: "linear-gradient(135deg, #0c2a4a, #060d1a)" }}
+      >
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" opacity="0.4">
+          <path d="M3 12c1.5-4 3.5-2 6-5 2.5-3 4.5-1 6-4" stroke="#38bdf8" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+      </div>
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-[15px] font-medium text-white mb-1 truncate">
-                    {session.label ?? `Session ${session.id.slice(0, 8)}`}
-                  </p>
-                  <div className="flex items-center gap-3 text-[12px] text-white/40">
-                    <span>{formatDate(session.created_at)}</span>
-                    {formatDuration(session.duration_seconds) && (
-                      <>
-                        <span className="w-1 h-1 rounded-full bg-white/20" />
-                        <span>{formatDuration(session.duration_seconds)}</span>
-                      </>
-                    )}
-                    <span className="w-1 h-1 rounded-full bg-white/20" />
-                    <StatusBadge status={session.status} />
-                  </div>
-                </div>
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <p className="text-[15px] font-medium text-white mb-1 truncate">
+          {session.label ?? `Session ${session.id.slice(0, 8)}`}
+        </p>
+        <div className="flex items-center gap-3 text-[12px] text-white/40">
+          <span>{formatDate(session.created_at)}</span>
+          {formatDuration(session.duration_seconds) && (
+            <>
+              <span className="w-1 h-1 rounded-full bg-white/20" />
+              <span>{formatDuration(session.duration_seconds)}</span>
+            </>
+          )}
+          <span className="w-1 h-1 rounded-full bg-white/20" />
+          <StatusBadge status={session.status} />
+        </div>
+      </div>
 
-                {/* Arrow */}
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  className="text-white/20 group-hover:text-white/50 transition-colors flex-shrink-0"
-                >
-                  <path d="M4 8h8M9 5l3 3-3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </Link>
-            ))
+      {/* Arrow */}
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 16 16"
+        fill="none"
+        className="text-white/20 group-hover:text-white/50 transition-colors flex-shrink-0"
+      >
+        <path d="M4 8h8M9 5l3 3-3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </Link>
+
+    {/* Delete */}
+    <button
+      onClick={() => handleDelete(session.id)}
+      title="Delete session"
+      className="flex-shrink-0 self-stretch px-4 flex items-center justify-center text-white/0 group-hover:text-white/25 hover:!text-red-400 hover:bg-red-500/10 transition-all border-l border-white/5"
+    >
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M2 3.5h10M5 3.5V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5v1M3 3.5l.75 7.5h6.5L11 3.5M5.5 6v4M8.5 6v4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
+  </div>
+))
           )}
         </div>
       </div>

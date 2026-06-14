@@ -79,22 +79,22 @@ def process_video_job(session_id: str, video_url: str):
             # critique = { "overall": "...", "tips": [...], "positives": [...] }
 
             # ── 5. Upload annotated video to Supabase Storage ────────────────
-            annotated_url = None
+            # Store the storage path, NOT a signed URL — signed URLs expire.
+            # The frontend generates a fresh signed URL on each page load.
+            annotated_video_path = None
             if os.path.exists(output_path):
                 print(f"[{session_id}] Compressing annotated video...")
                 compressed_path = output_path.replace(".mp4", "_compressed.mp4")
                 compress_video(output_path, compressed_path, target_mb=40)
 
-                storage_path = f"annotated/{session_id}.mp4"
+                annotated_video_path = f"annotated/{session_id}.mp4"
                 with open(compressed_path, "rb") as f:
                     supabase.storage.from_("surf-videos").upload(
-                        storage_path,
+                        annotated_video_path,
                         f,
                         {"content-type": "video/mp4", "upsert": "true"},
                     )
                 os.remove(compressed_path)
-                signed = supabase.storage.from_("surf-videos").create_signed_url(storage_path, 60 * 60 * 24)  # 24hr expiry
-                annotated_url = signed["signedURL"]
 
             # ── 6. Write results ─────────────────────────────────────────────
             supabase.table("sessions").update({
@@ -102,7 +102,7 @@ def process_video_job(session_id: str, video_url: str):
                 "frame_data": frame_data,
                 "analysis": analysis,
                 "critique": critique,
-                "annotated_video_url": annotated_url,
+                "annotated_video_path": annotated_video_path,  # path, not URL
             }).eq("id", session_id).execute()
 
             print(f"[{session_id}] Done ✓")

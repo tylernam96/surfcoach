@@ -36,7 +36,9 @@ export type SessionStatus = "processing" | "complete" | "error";
 export type Session = {
   id: string;
   user_id: string;
-  video_url: string;
+  video_url: string | null;
+  video_path: string | null;
+  annotated_video_path: string | null;
   annotated_video_url: string | null;
   status: SessionStatus;
   error_message?: string;

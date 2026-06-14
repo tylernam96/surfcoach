@@ -14,7 +14,7 @@ declare global {
 }
 
 type Props = {
-  originalUrl: string;
+  originalUrl: string | null;
   annotatedUrl?: string | null;
   onVideoError?: () => void;
 };
@@ -430,11 +430,10 @@ export default function VideoPlayer({ originalUrl, annotatedUrl, onVideoError }:
     };
 
     scripts.forEach((src) => {
-      if (document.querySelector(`script[src="${src}"]`)) {
-        loaded++;
-        if (loaded === scripts.length) setScriptsLoaded(true);
-        return;
-      }
+      if (window.Pose) {
+  setScriptsLoaded(true);
+  return;
+}
       const s = document.createElement("script");
       s.src = src;
       s.crossOrigin = "anonymous";
@@ -448,7 +447,16 @@ export default function VideoPlayer({ originalUrl, annotatedUrl, onVideoError }:
 
   // ── Initialise MediaPipe Pose ───────────────────────────────────────────────
   useEffect(() => {
-    if (!scriptsLoaded || !window.Pose) return;
+  console.log("=== Pose Effect ===");
+  console.log("scriptsLoaded:", scriptsLoaded);
+  console.log("window.Pose exists:", !!window.Pose);
+
+  if (!scriptsLoaded || !window.Pose) {
+    console.log("Pose effect early return");
+    return;
+  }
+
+  console.log("Creating Pose instance");
 
     const pose = new window.Pose({
       locateFile: (file: string) =>
@@ -516,10 +524,26 @@ console.log("initialize", pose.initialize);
   const processFrame = useCallback(() => {
     const video = videoRef.current;
     const pose = poseRef.current;
+    const canvas = canvasRef.current;
 
+    // CRITICAL: Check if video and canvas have valid dimensions
     if (video && pose && !video.paused && !video.ended && !processingRef.current) {
+      // Ensure video has actual dimensions (not loading state)
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        processingRef.current = false;
+        rafRef.current = requestAnimationFrame(processFrame);
+        return;
+      }
+
+      // Ensure canvas dimensions match video
+      if (canvas && (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight)) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      }
+
       processingRef.current = true;
-      pose.send({ image: video }).catch(() => {
+      pose.send({ image: video }).catch((error: Error) => {
+        console.warn("Pose processing error:", error);
         processingRef.current = false;
       });
     }
@@ -589,7 +613,7 @@ console.log("initialize", pose.initialize);
       >
         <video
           ref={videoRef}
-          src={originalUrl}
+          src={originalUrl ?? undefined}
           className="w-full h-full object-contain"
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}

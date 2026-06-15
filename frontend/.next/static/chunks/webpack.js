@@ -192,7 +192,7 @@
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	!function() {
-/******/ 		__webpack_require__.h = function() { return "115b02241ed0452d"; }
+/******/ 		__webpack_require__.h = function() { return "42bea7912d2e93ee"; }
 /******/ 	}();
 /******/ 	
 /******/ 	/* webpack/runtime/global */
@@ -842,7 +842,7 @@
 /******/ 					if(installedChunkData) {
 /******/ 						promises.push(installedChunkData[2]);
 /******/ 					} else {
-/******/ 						if(/^(app(\/(((dashboard|pricing|session\/\[id\]|signup)\/|)page|layout)|\-pages\-internals)|main\-app)$/.test(chunkId)) {
+/******/ 						if(!/^(css\-app_globals_css\-node_modules_next_font_google_target_css\-node_modules_next_font_google_ta\-77a3b2|webpack)$/.test(chunkId)) {
 /******/ 							// setup Promise in chunk cache
 /******/ 							var promise = new Promise(function(resolve, reject) { installedChunkData = installedChunks[chunkId] = [resolve, reject]; });
 /******/ 							promises.push(installedChunkData[2] = promise);

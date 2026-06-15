@@ -54,21 +54,7 @@ function SignupForm() {
       return;
     }
 
-    const res = await fetch("/api/create-checkout-session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan, userId: data.user?.id, email }),
-    });
-
-    const { url, error: stripeError } = await res.json();
-
-    if (stripeError || !url) {
-      setError("Payment setup failed. Please try again.");
-      setLoading(false);
-      return;
-    }
-
-    window.location.href = url;
+    router.push("/dashboard");
   };
 
   return (
@@ -83,11 +69,8 @@ function SignupForm() {
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-20">
         {/* Header */}
-        <p className="text-[11px] font-medium tracking-[0.12em] uppercase text-ocean-light mb-4">
-          Create Account
-        </p>
         <h1
-          className="font-serif text-white text-center leading-[1.05] tracking-[-0.04em] mb-4"
+          className="font-serif text-white text-center leading-[1.05] tracking-[-0.04em] mb-10"
           style={{
             fontFamily: "var(--font-serif)",
             fontSize: "clamp(38px, 6vw, 64px)",
@@ -95,9 +78,6 @@ function SignupForm() {
         >
           Start surfing smarter.
         </h1>
-        <p className="text-[16px] font-light text-white/45 text-center max-w-md leading-relaxed mb-10">
-          Create your account to continue.
-        </p>
 
         {/* Selected plan pill */}
         <div className="flex items-center gap-3 bg-ocean-light/10 border border-ocean-light/20 rounded-full px-5 py-2.5 mb-10">
@@ -176,7 +156,7 @@ function SignupForm() {
               disabled={loading || !email || !password || !confirmPassword}
               className="w-full py-3.5 rounded-xl font-medium text-[15px] bg-ocean-light text-ocean-deep hover:bg-ocean-hover transition-all duration-200 hover:-translate-y-0.5 shadow-lg shadow-ocean-light/20 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 mt-2"
             >
-              {loading ? "Creating account…" : "Create Account & Continue to Payment"}
+              {loading ? "Creating account…" : "Create Account"}
             </button>
           </div>
 

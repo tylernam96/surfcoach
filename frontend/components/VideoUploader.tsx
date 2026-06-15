@@ -4,9 +4,6 @@ import { useState, useRef, DragEvent, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
-//console.log("SUPABASE URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
-//console.log("SUPABASE KEY:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -61,6 +58,16 @@ export default function VideoUploader() {
     setProgress(0);
     setError(null);
 
+    // Guard — user must be signed in before we touch storage or the DB
+    const {
+      data: { session: authSession },
+    } = await supabase.auth.getSession();
+    if (!authSession) {
+      setError("Please sign in to upload a video.");
+      setUploading(false);
+      return;
+    }
+
     try {
       const ext = file.name.split(".").pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -90,23 +97,18 @@ export default function VideoUploader() {
 
       // Create session row — store the storage path, not a signed URL.
       // Signed URLs expire; the frontend regenerates them on demand.
+      // user_id is required for the RLS INSERT policy (auth.uid() = user_id).
       const { data: session, error: dbError } = await supabase
         .from("sessions")
         .insert({
-          video_path: filePath,  // e.g. "videos/1234567890-abc123.mp4"
+          video_path: filePath, // e.g. "videos/1234567890-abc123.mp4"
           status: "processing",
+          user_id: authSession.user.id, // satisfies: WITH CHECK (auth.uid() = user_id)
         })
         .select()
         .single();
 
       if (dbError || !session) throw dbError;
-
-      let userId = localStorage.getItem('user_id');
-      if (!userId) {
-        userId = crypto.randomUUID(); // Generate a valid UUID
-        localStorage.setItem('user_id', userId);
-}
-
 
       // Trigger backend — signed URL is only used for the one-time download
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/analyse`, {
@@ -114,25 +116,25 @@ export default function VideoUploader() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           session_id: session.id,
-          video_url: signedData.signedUrl,  // backend uses this to download once
-          user_id: userId,
+          video_url: signedData.signedUrl, // backend uses this to download once
+          user_id: authSession.user.id,
         }),
       });
 
       setProgress(100);
       router.push(`/session/${session.id}`);
     } catch (err: unknown) {
-  console.error("Upload error:", err);
-  setError(
-    err instanceof Error
-      ? err.message
-      : typeof err === "object" && err !== null && "message" in err
-      ? String((err as { message: unknown }).message)
-      : JSON.stringify(err)
-  );
-  setUploading(false);
-  setProgress(0);
-}
+      console.error("Upload error:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err !== null && "message" in err
+          ? String((err as { message: unknown }).message)
+          : JSON.stringify(err)
+      );
+      setUploading(false);
+      setProgress(0);
+    }
   };
 
   return (

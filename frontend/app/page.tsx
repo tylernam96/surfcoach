@@ -95,15 +95,9 @@ export default function Home() {
           backgroundAttachment: "fixed",
         }}
       />
-      {/* Dark overlay so text stays readable */}
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 1,
-          background: "rgba(20, 20, 20, 0.55)",
-        }}
-      />
+
+
+      <div style={{ position: "fixed", inset: 0, zIndex: 1, background: "rgba(0,0,0,0.20)" }} />
 
       <main className="relative min-h-screen" style={{ zIndex: 2 }}>
         {/* Sticky nav */}
@@ -163,6 +157,12 @@ export default function Home() {
             >
               View sessions
             </a>
+            <a
+              href="/login"
+  className="inline-flex items-center gap-2 bg-transparent text-white/75 border border-white/25 font-light text-[15px] px-7 py-3.5 rounded-xl hover:border-white/50 hover:text-white transition-all"
+>
+  Sign In
+</a>
           </div>
         </section>
 

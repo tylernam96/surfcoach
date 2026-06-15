@@ -293,8 +293,9 @@ def _dead_time_pct(com_arr: np.ndarray, knee_arr: np.ndarray) -> float:
     com_vel = np.abs(np.diff(com_arr))
     dead    = com_vel < VELOCITY_THRESH
     if len(knee_arr) > 1:
-        knee_vel = np.abs(np.diff(knee_arr[:len(com_vel)]))
-        dead     = dead & (knee_vel < 2.0)   # degrees/frame threshold
+        knee_vel = np.abs(np.diff(knee_arr)) 
+        n        = min(len(dead), len(knee_vel))
+        dead     = dead[:n] & (knee_vel[:n]< 2.0)   # degrees/frame threshold
     return round(float(np.mean(dead)), 2)
 
 

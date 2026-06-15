@@ -121,6 +121,11 @@ export default function VideoUploader() {
         }),
       });
 
+      console.log("Backend URL:", process.env.NEXT_PUBLIC_BACKEND_URL);
+console.log("Response status:", response.status);
+const responseText = await response.text();
+console.log("Response body:", responseText);
+
       setProgress(100);
       router.push(`/session/${session.id}`);
     } catch (err: unknown) {

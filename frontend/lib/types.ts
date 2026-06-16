@@ -16,6 +16,7 @@ export type Analysis = {
     frames_analysed?: number;
     total_frames?: number;
   };
+  scores?: Scores;
 };
 
 export type Tip = {
@@ -47,4 +48,14 @@ export type Session = {
   created_at?: string;
   label?: string;
   duration_seconds?: number;
+};
+
+export type SubScore = { name: string; value: number; note: string };
+export type PillarScore = { value: number; label: string; breakdown: SubScore[] };
+export type Scores = {
+  position: PillarScore;
+  power: PillarScore;
+  flow: PillarScore;
+  surfy_score: number;
+  surfy_label: string;
 };

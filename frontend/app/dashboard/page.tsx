@@ -48,7 +48,6 @@ function SkeletonRow() {
 export default function Dashboard() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showUploader, setShowUploader] = useState(false);
 
   const fetchSessions = async () => {
     const { data, error } = await supabase
@@ -83,37 +82,23 @@ export default function Dashboard() {
       <Nav />
 
       <div className="max-w-3xl mx-auto px-6 py-16">
-        <div className="flex items-end justify-between mb-12">
-          <div>
-            <SectionLabel>Dashboard</SectionLabel>
-            <SectionHeading className="text-[clamp(32px,4vw,46px)]">
-              Your sessions
-            </SectionHeading>
-          </div>
-          <button
-            onClick={() => setShowUploader((v) => !v)}
-            className="inline-flex items-center gap-2 bg-ocean-light text-ocean-deep font-medium text-sm px-5 py-2.5 rounded-xl hover:bg-ocean-hover transition-all"
-          >
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-              <path d="M6.5 1v6M4 4l2.5-3L9 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M1.5 10h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-            </svg>
-            {showUploader ? "Hide uploader" : "New upload"}
-          </button>
+        <div className="mb-12">
+          <SectionLabel>Dashboard</SectionLabel>
+          <SectionHeading className="text-[clamp(32px,4vw,46px)]">
+            Your sessions
+          </SectionHeading>
         </div>
 
-        {/* Inline uploader — toggled by button */}
-        {showUploader && (
-          <div
-            className="rounded-3xl px-8 py-10 mb-10"
-            style={{
-              background: "rgba(8, 18, 38, 0.6)",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
-            <VideoUploader />
-          </div>
-        )}
+        {/* Inline uploader — always visible */}
+        <div
+          className="rounded-3xl px-8 py-10 mb-10"
+          style={{
+            background: "rgba(8, 18, 38, 0.6)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <VideoUploader />
+        </div>
 
         {/* Session list */}
         <div className="space-y-3">
@@ -134,13 +119,7 @@ export default function Dashboard() {
               <p className="font-serif text-xl text-white/60 mb-2" style={{ fontFamily: "var(--font-serif)" }}>
                 No sessions yet
               </p>
-              <p className="text-sm text-white/30 mb-6">Upload your first surf clip to get started.</p>
-              <button
-                onClick={() => setShowUploader(true)}
-                className="text-sm text-ocean-light hover:text-ocean-hover transition-colors"
-              >
-                Upload a session →
-              </button>
+              <p className="text-sm text-white/30">Upload your first surf clip to get started.</p>
             </div>
           ) : (
             sessions.map((session) => (

@@ -1,8 +1,6 @@
 "use client";
 
-import VideoUploader from "@/components/VideoUploader";
 import { Nav, WaveDivider, SectionLabel, SectionHeading } from "@/components/UI";
-import { useRouter } from "next/navigation";
 
 const BULLETS = [
   "Analyses your surfing with precision no human coach can match.",
@@ -22,14 +20,8 @@ const PILLARS = [
     glow: "rgba(56,189,248,0.04)",
     summary: "Stability and connection are the names of the game when it comes to surfing waves. Surfy tracks your stance width, weight distribution, and precise rail engagement. By mastering these micro-adjustments, you'll stay completely locked into the wave's power pocket, turning erratic rides into smooth, unbreakable control.",
     metrics: [
-      {
-        name: "Stance & Balance",
-        desc: "Foot width vs. shoulder width, centre of mass over feet, and front/back-foot bias detection.",
-      },
-      {
-        name: "Rail Engagement",
-        desc: "Body lean angle via shoulder and hip alignment — are you committing weight to the rail in turns?",
-      },
+      { name: "Stance & Balance", desc: "Foot width vs. shoulder width, centre of mass over feet, and front/back-foot bias detection." },
+      { name: "Rail Engagement", desc: "Body lean angle via shoulder and hip alignment — are you committing weight to the rail in turns?" },
     ],
   },
   {
@@ -41,18 +33,9 @@ const PILLARS = [
     glow: "rgba(249,115,22,0.04)",
     summary: "Your body should move like a coiled spring through every turn — you COMPRESS into the board to absorb energy, and then EXTEND to create speed. SURFY teaches you the exact knee and hip mechanics needed for efficient pumping.",
     metrics: [
-      {
-        name: "Compression & Extension",
-        desc: "Knee angles and hip height — measuring depth, speed, and timing of each cycle.",
-      },
-      {
-        name: "Pump Detection",
-        desc: "Frequency, amplitude, and smoothness of repeated compression-extension cycles.",
-      },
-      {
-        name: "Shoulder & Hip Rotation",
-        desc: "Torso separation and shoulder-hip delta — does your upper body correctly lead turns?",
-      },
+      { name: "Compression & Extension", desc: "Knee angles and hip height — measuring depth, speed, and timing of each cycle." },
+      { name: "Pump Detection", desc: "Frequency, amplitude, and smoothness of repeated compression-extension cycles." },
+      { name: "Shoulder & Hip Rotation", desc: "Torso separation and shoulder-hip delta — does your upper body correctly lead turns?" },
     ],
   },
   {
@@ -64,18 +47,9 @@ const PILLARS = [
     glow: "rgba(168,85,247,0.04)",
     summary: "SURFY analyzes your coordination, tracking the critical sequence of eyes → arms → shoulders → hips. It teaches you to look where you want to go and link maneuvers seamlessly.",
     metrics: [
-      {
-        name: "Head & Eye Direction",
-        desc: "Face orientation and nose direction — looking where you're going, not down at the board.",
-      },
-      {
-        name: "Arm Usage",
-        desc: "Position, symmetry, and movement timing — do your arms initiate turns and generate momentum?",
-      },
-      {
-        name: "Flow & Linking",
-        desc: "Measuring dead time between movements and ability to link pumps, bottom turns, and cutbacks.",
-      },
+      { name: "Head & Eye Direction", desc: "Face orientation and nose direction — looking where you're going, not down at the board." },
+      { name: "Arm Usage", desc: "Position, symmetry, and movement timing — do your arms initiate turns and generate momentum?" },
+      { name: "Flow & Linking", desc: "Measuring dead time between movements and ability to link pumps, bottom turns, and cutbacks." },
     ],
   },
 ];
@@ -96,12 +70,11 @@ export default function Home() {
         }}
       />
 
-
       <div style={{ position: "fixed", inset: 0, zIndex: 1, background: "rgba(0,0,0,0.20)" }} />
 
       <main className="relative min-h-screen" style={{ zIndex: 2 }}>
-        {/* Sticky nav */}
-        <Nav />
+        {/* Sticky nav — showAuth renders Sign In + Get Started */}
+        <Nav showAuth />
 
         {/* ── HERO ── */}
         <section className="min-h-screen flex flex-col items-center justify-center text-center px-6 pb-24 pt-32">
@@ -157,37 +130,6 @@ export default function Home() {
             >
               View sessions
             </a>
-            <a
-              href="/login"
-  className="inline-flex items-center gap-2 bg-transparent text-white/75 border border-white/25 font-light text-[15px] px-7 py-3.5 rounded-xl hover:border-white/50 hover:text-white transition-all"
->
-  Sign In
-</a>
-          </div>
-        </section>
-
-        {/* ── UPLOAD — frosted panel ── */}
-        <section id="upload" className="py-6 px-6">
-          <div
-            className="max-w-5xl mx-auto rounded-3xl px-12 py-16"
-            style={{
-              background: "rgba(8, 18, 38, 0.45)",
-              backdropFilter: "blur(12px)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              boxShadow: "0 8px 64px rgba(0,0,0,0.25)",
-            }}
-          >
-            <div className="text-center mb-12">
-              <SectionHeading className="text-[clamp(32px,4.5vw,48px)] mb-4">
-                Drop your clip.
-                <br />
-                <em className="text-ocean-light">We&rsquo;ll do the rest.</em>
-              </SectionHeading>
-              <p className="text-[15px] font-light text-white/45 leading-relaxed">
-                Works with any angle — side-on, behind, or drone. The AI adapts to what it can see.
-              </p>
-            </div>
-            <VideoUploader />
           </div>
         </section>
 
@@ -221,7 +163,6 @@ export default function Home() {
                     border: `1px solid ${pillar.border}`,
                   }}
                 >
-                  {/* Colored top bar */}
                   <div className="h-1.5 w-full" style={{ background: pillar.color }} />
                   <div className="p-8 text-center">
                     <h3
@@ -236,7 +177,6 @@ export default function Home() {
               ))}
             </div>
 
-            {/* CTA button */}
             <div className="text-center mt-14">
               <a
                 href="/pricing"

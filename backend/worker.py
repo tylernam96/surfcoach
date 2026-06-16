@@ -16,6 +16,8 @@ from supabase_client import get_supabase
 from pose import process_video
 from analyse import analyse_pose_data
 from claude import get_surf_critique
+from scoring import compute_scores
+
 
 
 def download_video(url: str, dest_path: str):
@@ -71,6 +73,8 @@ def process_video_job(session_id: str, video_url: str):
             # ── 3. Surf analysis (rule-based) ────────────────────────────────
             print(f"[{session_id}] Analysing surf form...")
             analysis = analyse_pose_data(frame_data)
+            analysis["scores"] = compute_scores(analysis)
+
             # analysis = { "flags": [...], "metrics": {...}, "summary": "..." }
 
             # ── 4. Claude natural-language critique ──────────────────────────

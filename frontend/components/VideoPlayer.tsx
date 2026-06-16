@@ -403,6 +403,8 @@ export default function VideoPlayer({ originalUrl, annotatedUrl, onVideoError }:
   const [scriptsLoaded, setScriptsLoaded] = useState(false);
   const [isPortrait, setIsPortrait] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -556,6 +558,10 @@ console.log("initialize", pose.initialize);
     return () => cancelAnimationFrame(rafRef.current);
   }, [processFrame]);
 
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.volume = volume;
+  }, [volume]);
+
   // ── Playback controls ───────────────────────────────────────────────────────
   const togglePlay = () => {
     if (!videoRef.current) return;
@@ -592,6 +598,42 @@ console.log("initialize", pose.initialize);
     videoRef.current.currentTime = pct * videoRef.current.duration;
   };
 
+  const toggleMute = () => {
+    if (!videoRef.current) return;
+    const next = !muted;
+    videoRef.current.muted = next;
+    setMuted(next);
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const next = parseFloat(e.target.value);
+    setVolume(next);
+    if (!videoRef.current) return;
+    videoRef.current.volume = next;
+    if (next === 0 && !muted) {
+      videoRef.current.muted = true;
+      setMuted(true);
+    } else if (next > 0 && muted) {
+      videoRef.current.muted = false;
+      setMuted(false);
+    }
+  };
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!annotatedUrl) return;
+    const res = await fetch(annotatedUrl);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = "surf-session-overlay.mp4";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(blobUrl);
+  };
+
   const formatTime = (s: number) => {
     if (!s || isNaN(s)) return "0:00";
     const m = Math.floor(s / 60);
@@ -623,6 +665,7 @@ console.log("initialize", pose.initialize);
           }}
           playsInline
           crossOrigin="anonymous"
+          muted={muted}
         />
         {/* Canvas overlay — sits exactly on top */}
         <canvas
@@ -718,6 +761,33 @@ console.log("initialize", pose.initialize);
             {formatTime(currentTime)} / {formatTime(duration)}
           </span>
 
+          {/* Mute / volume */}
+          <button
+            onClick={toggleMute}
+            className="w-7 h-7 flex items-center justify-center text-white/60 hover:text-white transition-colors flex-shrink-0"
+          >
+            {muted || volume === 0 ? (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M1 5v4h2.5L7 12V2L3.5 5H1z" fill="currentColor" />
+                <path d="M9.5 4.5l4 5M13.5 4.5l-4 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M1 5v4h2.5L7 12V2L3.5 5H1z" fill="currentColor" />
+                <path d="M9.5 4.3a3.2 3.2 0 010 5.4M11.3 2.8a5.8 5.8 0 010 8.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            )}
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={muted ? 0 : volume}
+            onChange={handleVolumeChange}
+            className="w-16 accent-ocean-light"
+          />
+
           <div className="flex-1" />
 
           {/* Pose overlay toggle */}
@@ -743,6 +813,19 @@ console.log("initialize", pose.initialize);
               Pose overlay
             </button>
           </div>
+
+          {/* Download annotated video */}
+          {annotatedUrl && (
+            <button
+              onClick={handleDownload}
+              className="w-7 h-7 flex items-center justify-center text-white/60 hover:text-white transition-colors flex-shrink-0"
+              title="Download pose overlay video"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M7 1v8M4 6l3 3 3-3M2 12h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
     </div>

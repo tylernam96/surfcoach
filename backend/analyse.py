@@ -92,7 +92,7 @@ RAIL_GOOD_THRESH   = 0.35
 
 # Arms (if pose.py provides these)
 ARM_SPREAD_LOW     = 0.30    # arms too close to body
-ARM_ASYM_HIGH      = 0.25    # left/right asymmetry ratio
+ARM_ASYM_HIGH      = 0.55    # only extreme, sustained asymmetry (dynamic arms are normal)
 
 MIN_FRAMES         = 10
 MIN_CONFIDENCE     = 0.50
@@ -303,17 +303,15 @@ def _dead_time_pct(com_arr: np.ndarray, knee_arr: np.ndarray) -> float:
 
 def _foot_bias(hip_hinge_arr: np.ndarray) -> str:
     """
-    Estimate front/back foot weighting from mean hip hinge.
-    Convention (from pose.py): positive = forward lean = front-heavy.
+    Front/back foot weighting is NOT recoverable from hip_hinge.
+
+    pose.py emits hip_hinge as a shoulder-hip-knee fold angle in DEGREES
+    (~120-175°), which carries no front/back lateral-weight signal — and the
+    old thresholds here (+0.15 / -0.10) assumed a normalised coefficient, so
+    every ride was mislabelled "front-heavy". Until a real lateral-weight
+    estimate exists, report "unknown" rather than a false reading.
     """
-    if len(hip_hinge_arr) == 0:
-        return "unknown"
-    mean = float(np.mean(hip_hinge_arr))
-    if mean > FOOT_BIAS_FRONT:
-        return "front-heavy"
-    if mean < FOOT_BIAS_BACK:
-        return "back-heavy"
-    return "balanced"
+    return "unknown"
 
 
 # ── POSITION: rail engagement proxy ──────────────────────────────────────────

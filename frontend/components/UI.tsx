@@ -35,7 +35,7 @@ export function Logo() {
 }
 
 /* ── Nav ── */
-export function Nav() {
+export function Nav({ showAuth = false }: { showAuth?: boolean }) {
   return (
     <nav className="relative z-10 flex items-center justify-between px-12 py-7">
       <Logo />
@@ -48,22 +48,26 @@ export function Nav() {
             Sessions
           </Link>
         </li>
-        <li>
-          <Link
-            href="/login"
-            className="text-white/60 no-underline text-sm font-light hover:text-white transition-colors"
-          >
-            Sign In
-          </Link>
-        </li>
-        <li>
-          <Link
-            href="/pricing"
-            className="bg-ocean-light text-ocean-deep text-sm font-medium px-5 py-2 rounded-lg no-underline hover:bg-ocean-hover transition-colors"
-          >
-            Get started
-          </Link>
-        </li>
+        {showAuth && (
+          <>
+            <li>
+              <Link
+                href="/login"
+                className="text-white/60 no-underline text-sm font-light hover:text-white transition-colors"
+              >
+                Sign In
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/pricing"
+                className="bg-ocean-light text-ocean-deep text-sm font-medium px-5 py-2 rounded-lg no-underline hover:bg-ocean-hover transition-colors"
+              >
+                Get started
+              </Link>
+            </li>
+          </>
+        )}
       </ul>
     </nav>
   );

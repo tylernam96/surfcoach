@@ -27,34 +27,142 @@ const priorityColor: Record<number, string> = {
   3: "bg-ocean-light/15 text-ocean-light",
 };
 
-/* ── Metric bar ── */
-function MetricBar({
-  label,
-  value,
-  max = 120,
-  color = "#0e7490",
-}: {
-  label: string;
-  value: number;
-  max?: number;
-  color?: string;
-}) {
-  const pct = Math.min((value / max) * 100, 100);
+/* ── Score → colour (1–100) ── */
+function scoreColor(v: number): string {
+  if (v >= 80) return "#4ade80"; // green  — Excellent
+  if (v >= 60) return "#38bdf8"; // ocean  — Good
+  if (v >= 40) return "#fbbf24"; // amber  — Needs Work
+  return "#f87171"; //               red    — Poor
+}
+
+function scoreTextColor(v: number): string {
+  if (v >= 80) return "text-green-400";
+  if (v >= 60) return "text-ocean-light";
+  if (v >= 40) return "text-amber-400";
+  return "text-red-400";
+}
+
+/* ── Aggregate Surfy Score ring ── */
+function SurfyScoreRing({ value, label }: { value: number; label: string }) {
+  const r = 52;
+  const circ = 2 * Math.PI * r;
+  const dash = (value / 100) * circ;
+  const color = scoreColor(value);
+
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-[13px] text-white/60 w-[108px] flex-shrink-0">
-        {label}
-      </span>
-      <div className="flex-1 h-[4px] bg-white/8 rounded-full overflow-hidden">
+    <div className="flex items-center gap-6">
+      <div className="relative flex-shrink-0" style={{ width: 128, height: 128 }}>
+        <svg width="128" height="128" viewBox="0 0 128 128" className="-rotate-90">
+          <circle
+            cx="64"
+            cy="64"
+            r={r}
+            fill="none"
+            stroke="rgba(255,255,255,0.08)"
+            strokeWidth="9"
+          />
+          <circle
+            cx="64"
+            cy="64"
+            r={r}
+            fill="none"
+            stroke={color}
+            strokeWidth="9"
+            strokeLinecap="round"
+            strokeDasharray={`${dash} ${circ}`}
+            style={{ transition: "stroke-dasharray 0.9s ease-out" }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span
+            className="text-[38px] font-semibold tabular-nums leading-none"
+            style={{ color }}
+          >
+            {value}
+          </span>
+          <span className="text-[10px] text-white/35 mt-1">out of 100</span>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-[10px] font-medium tracking-[0.1em] uppercase text-white/40 mb-1.5">
+          Surfy Score
+        </p>
+        <p className={`text-[26px] font-semibold leading-tight ${scoreTextColor(value)}`}>
+          {label}
+        </p>
+        <p className="text-[12px] text-white/40 mt-1 max-w-[200px] leading-relaxed">
+          Overall rating across position, power and flow.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ── Sub-score row inside a pillar card ── */
+function SubScoreRow({
+  name,
+  value,
+  note,
+}: {
+  name: string;
+  value: number;
+  note: string;
+}) {
+  const color = scoreColor(value);
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-3">
+        <span className="text-[13px] text-white/70 flex-1">{name}</span>
+        <span
+          className="text-[13px] font-medium tabular-nums w-8 text-right"
+          style={{ color }}
+        >
+          {value}
+        </span>
+      </div>
+      <div className="h-[4px] bg-white/8 rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${pct}%`, background: color }}
+          style={{ width: `${value}%`, background: color }}
         />
       </div>
-      <span className="text-[12px] text-white/45 w-9 text-right flex-shrink-0">
-        {Math.round(value)}°
-      </span>
+      <p className="text-[11.5px] text-white/40 leading-relaxed">{note}</p>
     </div>
+  );
+}
+
+/* ── Pillar score card ── */
+function PillarCard({
+  title,
+  pillar,
+}: {
+  title: string;
+  pillar: PillarScore;
+}) {
+  const color = scoreColor(pillar.value);
+  return (
+    <Card>
+      <div className="flex items-baseline justify-between mb-4">
+        <CardTitle>{title}</CardTitle>
+        <div className="flex items-baseline gap-2">
+          <span
+            className="text-[28px] font-semibold tabular-nums leading-none"
+            style={{ color }}
+          >
+            {pillar.value}
+          </span>
+          <span className={`text-[12px] font-medium ${scoreTextColor(pillar.value)}`}>
+            {pillar.label}
+          </span>
+        </div>
+      </div>
+      <div className="space-y-4">
+        {pillar.breakdown.map((sub, i) => (
+          <SubScoreRow key={i} name={sub.name} value={sub.value} note={sub.note} />
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -84,7 +192,7 @@ export default function ResultsView({ session }: Props) {
   const { analysis, critique } = session;
   if (!analysis || !critique) return null;
 
-  const m = analysis.metrics;
+  const scores = analysis.scores;
   const issues = analysis.flags.filter((f) => f.severity === "issue");
   const warnings = analysis.flags.filter((f) => f.severity === "warning");
   const infos = analysis.flags.filter((f) => f.severity === "info");
@@ -104,6 +212,22 @@ export default function ResultsView({ session }: Props) {
           >
             {critique.one_thing}
           </p>
+        </div>
+      )}
+
+      {/* ── Surfy Score ── */}
+      {scores && (
+        <Card>
+          <SurfyScoreRing value={scores.surfy_score} label={scores.surfy_label} />
+        </Card>
+      )}
+
+      {/* ── Pillar scores ── */}
+      {scores && (
+        <div className="space-y-5">
+          <PillarCard title="Position" pillar={scores.position} />
+          <PillarCard title="Power" pillar={scores.power} />
+          <PillarCard title="Flow" pillar={scores.flow} />
         </div>
       )}
 
@@ -144,30 +268,6 @@ export default function ResultsView({ session }: Props) {
               </span>
             ))}
           </div>
-        )}
-      </Card>
-
-      {/* ── Biomechanics ── */}
-      <Card>
-        <CardTitle>Biomechanics</CardTitle>
-        <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-          {m.knee_bend_left?.mean != null && (
-            <MetricBar label="Knee bend L" value={m.knee_bend_left.mean} color="#0e7490" />
-          )}
-          {m.knee_bend_right?.mean != null && (
-            <MetricBar label="Knee bend R" value={m.knee_bend_right.mean} color="#0e7490" />
-          )}
-          {m.hip_hinge?.mean != null && (
-            <MetricBar label="Hip hinge" value={m.hip_hinge.mean} color="#d97706" />
-          )}
-          {m.shoulder_rotation?.mean != null && (
-            <MetricBar label="Shoulder rot." value={m.shoulder_rotation.mean} color="#22c55e" />
-          )}
-        </div>
-        {m.frames_analysed != null && m.total_frames != null && (
-          <p className="text-[11px] text-white/25 mt-4">
-            {m.frames_analysed} / {m.total_frames} frames analysed
-          </p>
         )}
       </Card>
 
@@ -218,3 +318,10 @@ export default function ResultsView({ session }: Props) {
     </div>
   );
 }
+
+/* ── Local type mirror (add canonical version to lib/types.ts) ── */
+type PillarScore = {
+  value: number;
+  label: string;
+  breakdown: { name: string; value: number; note: string }[];
+};

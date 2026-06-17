@@ -17,6 +17,7 @@ from pose import process_video
 from analyse import analyse_pose_data
 from claude import get_surf_critique
 from scoring import compute_scores
+from segmentation import segment_ride
 
 
 
@@ -48,8 +49,36 @@ def compress_video(input_path: str, output_path: str, target_mb: int = 40):
     ], check=True, capture_output=True)
 
 
-def process_video_job(session_id: str, video_url: str):
+def _derive_facing(stance: str | None, wave_direction: str | None) -> str | None:
+    """
+    Frontside vs backside is a pure function of lead foot × wave direction and
+    is camera-independent (unlike anything we infer from the frame):
+      • Regular (left foot forward): Right = frontside, Left = backside
+      • Goofy   (right foot forward): Left  = frontside, Right = backside
+    """
+    if not stance or not wave_direction:
+        return None
+    s, w = stance.lower(), wave_direction.lower()
+    if s == "regular":
+        return "frontside" if w == "right" else "backside" if w == "left" else None
+    if s == "goofy":
+        return "frontside" if w == "left" else "backside" if w == "right" else None
+    return None
+
+
+def process_video_job(
+    session_id: str,
+    video_url: str,
+    wave_direction: str | None = None,
+    stance: str | None = None,
+):
     supabase = get_supabase()
+
+    context = {
+        "stance": stance,
+        "wave_direction": wave_direction,
+        "facing": _derive_facing(stance, wave_direction),
+    }
 
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -72,10 +101,14 @@ def process_video_job(session_id: str, video_url: str):
 
             # ── 3. Surf analysis (rule-based) ────────────────────────────────
             print(f"[{session_id}] Analysing surf form...")
-            analysis = analyse_pose_data(frame_data)
+            analysis = analyse_pose_data(frame_data, context=context)
             analysis["scores"] = compute_scores(analysis)
+            analysis["segments"] = segment_ride(
+                frame_data, category=analysis.get("maneuver_category", "general")
+            )
 
-            # analysis = { "flags": [...], "metrics": {...}, "summary": "..." }
+            # analysis = { "flags": [...], "metrics": {...}, "summary": "...",
+            #              "scores": {...}, "segments": {...} }
 
             # ── 4. Claude natural-language critique ──────────────────────────
             print(f"[{session_id}] Getting Claude critique...")

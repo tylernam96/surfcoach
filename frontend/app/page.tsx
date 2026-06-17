@@ -125,10 +125,10 @@ export default function Home() {
               </svg>
             </a>
             <a
-              href="/dashboard"
+              href="/trial"
               className="inline-flex items-center gap-2 bg-transparent text-white/75 border border-white/25 font-light text-[15px] px-7 py-3.5 rounded-xl hover:border-white/50 hover:text-white transition-all"
             >
-              View sessions
+              Try it free — one clip
             </a>
           </div>
         </section>

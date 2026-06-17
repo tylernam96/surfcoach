@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
+import { Segments } from "@/lib/types";
 
 // ── MediaPipe types (loaded via CDN script tags) ──────────────────────────────
 declare global {
@@ -17,7 +18,24 @@ type Props = {
   originalUrl: string | null;
   annotatedUrl?: string | null;
   onVideoError?: () => void;
+  segments?: Segments | null;
 };
+
+/** Imperative handle so the turn breakdown can drive playback. */
+export type PlayerHandle = {
+  seek: (time: number) => void;
+  playRange: (start: number, end: number) => void;
+};
+
+/* ── Turn callout colour by estimated type ── */
+const turnTypeColor: Record<string, string> = {
+  "Bottom turn": "#38bdf8",
+  "Top turn": "#f97316",
+  Cutback: "#a78bfa",
+};
+function turnColor(type: string): string {
+  return turnTypeColor[type] ?? "#4ade80";
+}
 
 // ── MediaPipe landmark indices ────────────────────────────────────────────────
 const LM = {
@@ -392,7 +410,10 @@ function roundRect(
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export default function VideoPlayer({ originalUrl, annotatedUrl, onVideoError }: Props) {
+const VideoPlayer = forwardRef<PlayerHandle, Props>(function VideoPlayer(
+  { originalUrl, annotatedUrl, onVideoError, segments },
+  ref
+) {
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -405,12 +426,34 @@ export default function VideoPlayer({ originalUrl, annotatedUrl, onVideoError }:
   const [expanded, setExpanded] = useState(false);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
+  const [isFs, setIsFs] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const poseRef = useRef<any>(null);
   const rafRef = useRef<number>(0);
   const processingRef = useRef(false);
+  const playUntilRef = useRef<number | null>(null);
+
+  // ── Imperative API for the turn breakdown (seek / play a single turn) ─────────
+  useImperativeHandle(ref, () => ({
+    seek: (time: number) => {
+      const v = videoRef.current;
+      if (!v) return;
+      playUntilRef.current = null;
+      v.currentTime = time;
+    },
+    playRange: (start: number, end: number) => {
+      const v = videoRef.current;
+      if (!v) return;
+      v.currentTime = start;
+      // Pad the end slightly so the turn doesn't cut off abruptly.
+      playUntilRef.current = end + 0.15;
+      v.play();
+      setPlaying(true);
+    },
+  }), []);
 
   // ── Load MediaPipe scripts ──────────────────────────────────────────────────
   useEffect(() => {
@@ -565,6 +608,7 @@ console.log("initialize", pose.initialize);
   // ── Playback controls ───────────────────────────────────────────────────────
   const togglePlay = () => {
     if (!videoRef.current) return;
+    playUntilRef.current = null; // manual control overrides turn playback
     if (playing) {
       videoRef.current.pause();
     } else {
@@ -575,9 +619,16 @@ console.log("initialize", pose.initialize);
 
   const handleTimeUpdate = () => {
     if (!videoRef.current) return;
-    const pct = (videoRef.current.currentTime / videoRef.current.duration) * 100;
+    const v = videoRef.current;
+    // Auto-pause at the end of a single-turn playback range.
+    if (playUntilRef.current != null && v.currentTime >= playUntilRef.current) {
+      v.pause();
+      setPlaying(false);
+      playUntilRef.current = null;
+    }
+    const pct = (v.currentTime / v.duration) * 100;
     setProgress(pct);
-    setCurrentTime(videoRef.current.currentTime);
+    setCurrentTime(v.currentTime);
   };
 
   const handleLoadedMetadata = () => {
@@ -593,6 +644,7 @@ console.log("initialize", pose.initialize);
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!videoRef.current) return;
+    playUntilRef.current = null;
     const rect = e.currentTarget.getBoundingClientRect();
     const pct = (e.clientX - rect.left) / rect.width;
     videoRef.current.currentTime = pct * videoRef.current.duration;
@@ -634,6 +686,22 @@ console.log("initialize", pose.initialize);
     URL.revokeObjectURL(blobUrl);
   };
 
+  const toggleFullscreen = () => {
+    const el = containerRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      el.requestFullscreen?.();
+    }
+  };
+
+  useEffect(() => {
+    const onFsChange = () => setIsFs(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
   const formatTime = (s: number) => {
     if (!s || isNaN(s)) return "0:00";
     const m = Math.floor(s / 60);
@@ -641,12 +709,22 @@ console.log("initialize", pose.initialize);
     return `${m}:${sec.toString().padStart(2, "0")}`;
   };
 
+  // Turn currently under the playhead — drives the on-video callout.
+  const turns = segments?.turns ?? [];
+  const activeTurn =
+    turns.find((t) => currentTime >= t.start_s && currentTime <= t.end_s) ?? null;
+
   return (
-    <div className="rounded-2xl overflow-hidden bg-black relative group">
+    <div
+      ref={containerRef}
+      className="rounded-2xl overflow-hidden bg-black relative group flex flex-col justify-center"
+    >
       {/* Video + Canvas stack — adapts to portrait or landscape */}
       <div
         className={`relative w-full ${
-          isPortrait
+          isFs
+            ? "flex-1"            // fullscreen: fill the screen, video letterboxes via object-contain
+            : isPortrait
             ? expanded
               ? "aspect-[9/16]"   // full portrait
               : "aspect-[9/14]"   // slightly cropped portrait (shows most of rider)
@@ -673,6 +751,33 @@ console.log("initialize", pose.initialize);
           className="absolute inset-0 w-full h-full pointer-events-none"
           style={{ opacity: overlayEnabled ? 1 : 0, transition: "opacity 0.2s" }}
         />
+
+        {/* Turn callout — appears while the playhead is inside a detected turn */}
+        {activeTurn && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 pointer-events-none">
+            <div
+              className="flex items-center gap-2 rounded-full px-3.5 py-1.5 backdrop-blur-sm border"
+              style={{
+                background: "rgba(10,22,40,0.78)",
+                borderColor: `${turnColor(activeTurn.type)}55`,
+              }}
+            >
+              <span
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{ background: turnColor(activeTurn.type) }}
+              />
+              <span className="text-[12px] font-medium text-white">
+                Turn {activeTurn.index} · {activeTurn.type}
+              </span>
+              <span
+                className="text-[12px] font-semibold tabular-nums"
+                style={{ color: turnColor(activeTurn.type) }}
+              >
+                {activeTurn.value}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Loading badge */}
         {!poseReady && (
@@ -735,6 +840,20 @@ console.log("initialize", pose.initialize);
             className="h-full bg-ocean-light rounded-full transition-all duration-100"
             style={{ width: `${progress}%` }}
           />
+          {/* Turn markers */}
+          {duration > 0 &&
+            turns.map((t) => (
+              <span
+                key={t.index}
+                title={`Turn ${t.index} · ${t.type}`}
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-[3px] h-[9px] rounded-full"
+                style={{
+                  left: `${(t.peak_s / duration) * 100}%`,
+                  background: turnColor(t.type),
+                  boxShadow: "0 0 0 1px rgba(0,0,0,0.4)",
+                }}
+              />
+            ))}
         </div>
 
         {/* Buttons row */}
@@ -826,8 +945,27 @@ console.log("initialize", pose.initialize);
               </svg>
             </button>
           )}
+
+          {/* Fullscreen */}
+          <button
+            onClick={toggleFullscreen}
+            className="w-7 h-7 flex items-center justify-center text-white/60 hover:text-white transition-colors flex-shrink-0"
+            title={isFs ? "Exit fullscreen" : "Fullscreen"}
+          >
+            {isFs ? (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M5 1v4H1M9 1v4h4M5 13V9H1M9 13V9h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M1 5V1h4M13 5V1H9M1 9v4h4M13 9v4H9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </button>
         </div>
       </div>
     </div>
   );
-}
+});
+
+export default VideoPlayer;

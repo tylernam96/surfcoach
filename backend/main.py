@@ -20,6 +20,9 @@ class AnalyseRequest(BaseModel):
     session_id: str
     video_url: str
     user_id: str
+    # Optional rider/wave context tagged at upload (None when not provided).
+    wave_direction: str | None = None   # "left" | "right"
+    stance: str | None = None           # "regular" | "goofy"
 
 class AnalyseResponse(BaseModel):
     session_id: str
@@ -49,7 +52,10 @@ async def analyse(req: AnalyseRequest, background_tasks: BackgroundTasks):
         "status": "processing",
     }).execute()
 
-    background_tasks.add_task(process_video_job, req.session_id, req.video_url)
+    background_tasks.add_task(
+        process_video_job, req.session_id, req.video_url,
+        req.wave_direction, req.stance,
+    )
 
     return AnalyseResponse(session_id=req.session_id, status="processing")
 

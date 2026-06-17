@@ -1,6 +1,7 @@
 "use client";
 
-import { Session, Flag, FlagSeverity } from "@/lib/types";
+import { useState } from "react";
+import { Session, Flag, FlagSeverity, Scores, PillarScore } from "@/lib/types";
 import { Card, CardTitle } from "@/components/UI";
 
 type Props = {
@@ -20,13 +21,6 @@ const flagBgColor: Record<FlagSeverity, string> = {
   info: "bg-ocean-light/10 border-ocean-light/15",
 };
 
-/* ── Priority badge colours ── */
-const priorityColor: Record<number, string> = {
-  1: "bg-red-500/20 text-red-400",
-  2: "bg-amber-500/20 text-amber-400",
-  3: "bg-ocean-light/15 text-ocean-light",
-};
-
 /* ── Score → colour (1–100) ── */
 function scoreColor(v: number): string {
   if (v >= 80) return "#4ade80"; // green  — Excellent
@@ -42,32 +36,92 @@ function scoreTextColor(v: number): string {
   return "text-red-400";
 }
 
+/* ── Key-insight bullet kinds ── */
+type Insight = { kind: "good" | "focus"; text: string };
+
+/* Capitalise the first letter (for context chips like "goofy" → "Goofy"). */
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/* Condense a full coaching note into a short lead phrase — fallback for
+   sessions scored before the backend emitted a dedicated `summary`. */
+function shortSummary(note: string): string {
+  if (!note) return "";
+  const lead = note.split(/\s*[—–-]\s|(?<=\.)\s/)[0].trim();
+  return lead.replace(/[.,;]+$/, "");
+}
+
+/* Short headline for a sub-score: prefer the backend's plain-language summary,
+   fall back to condensing the detailed note. */
+function subLabel(sub: { summary?: string; note: string }): string {
+  return sub.summary?.trim() || shortSummary(sub.note);
+}
+
+/* Derive 3 overall key insights from the actual sub-scores across every
+   pillar — lead with the standout strength, then the biggest focus areas. */
+function deriveSurfyInsights(scores: Scores): Insight[] {
+  const subs = [
+    ...scores.position.breakdown,
+    ...scores.power.breakdown,
+    ...scores.flow.breakdown,
+  ].filter((s) => s.note?.trim());
+
+  if (subs.length === 0) return [];
+
+  const byValueDesc = [...subs].sort((a, b) => b.value - a.value);
+  const best = byValueDesc[0];
+  const focuses = [...subs].sort((a, b) => a.value - b.value).slice(0, 2);
+
+  const insights: Insight[] = [
+    { kind: "good", text: subLabel(best) },
+    ...focuses.map((s) => ({ kind: "focus" as const, text: subLabel(s) })),
+  ];
+
+  // De-dup in case the standout strength is also one of the two extremes.
+  const seen = new Set<string>();
+  return insights.filter((i) => i.text && !seen.has(i.text) && seen.add(i.text)).slice(0, 3);
+}
+
+function InsightBullet({ insight }: { insight: Insight }) {
+  const isGood = insight.kind === "good";
+  return (
+    <li className="flex items-start gap-2.5">
+      <span
+        className="mt-[6px] w-1.5 h-1.5 rounded-full flex-shrink-0"
+        style={{ background: isGood ? "#4ade80" : "#f97316" }}
+      />
+      <span className="text-[13px] text-white/70 leading-relaxed">{insight.text}</span>
+    </li>
+  );
+}
+
 /* ── Aggregate Surfy Score ring ── */
 function SurfyScoreRing({ value, label }: { value: number; label: string }) {
-  const r = 52;
+  const r = 44;
   const circ = 2 * Math.PI * r;
   const dash = (value / 100) * circ;
   const color = scoreColor(value);
 
   return (
-    <div className="flex items-center gap-6">
-      <div className="relative flex-shrink-0" style={{ width: 128, height: 128 }}>
-        <svg width="128" height="128" viewBox="0 0 128 128" className="-rotate-90">
+    <div className="flex items-center gap-5">
+      <div className="relative flex-shrink-0" style={{ width: 108, height: 108 }}>
+        <svg width="108" height="108" viewBox="0 0 108 108" className="-rotate-90">
           <circle
-            cx="64"
-            cy="64"
+            cx="54"
+            cy="54"
             r={r}
             fill="none"
             stroke="rgba(255,255,255,0.08)"
-            strokeWidth="9"
+            strokeWidth="8"
           />
           <circle
-            cx="64"
-            cy="64"
+            cx="54"
+            cy="54"
             r={r}
             fill="none"
             stroke={color}
-            strokeWidth="9"
+            strokeWidth="8"
             strokeLinecap="round"
             strokeDasharray={`${dash} ${circ}`}
             style={{ transition: "stroke-dasharray 0.9s ease-out" }}
@@ -75,7 +129,7 @@ function SurfyScoreRing({ value, label }: { value: number; label: string }) {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
-            className="text-[38px] font-semibold tabular-nums leading-none"
+            className="text-[32px] font-semibold tabular-nums leading-none"
             style={{ color }}
           >
             {value}
@@ -88,7 +142,7 @@ function SurfyScoreRing({ value, label }: { value: number; label: string }) {
         <p className="text-[10px] font-medium tracking-[0.1em] uppercase text-white/40 mb-1.5">
           Surfy Score
         </p>
-        <p className={`text-[26px] font-semibold leading-tight ${scoreTextColor(value)}`}>
+        <p className={`text-[24px] font-semibold leading-tight ${scoreTextColor(value)}`}>
           {label}
         </p>
         <p className="text-[12px] text-white/40 mt-1 max-w-[200px] leading-relaxed">
@@ -99,7 +153,7 @@ function SurfyScoreRing({ value, label }: { value: number; label: string }) {
   );
 }
 
-/* ── Sub-score row inside a pillar card ── */
+/* ── Sub-score row (detailed view) ── */
 function SubScoreRow({
   name,
   value,
@@ -140,7 +194,15 @@ function PillarCard({
   title: string;
   pillar: PillarScore;
 }) {
+  const [showDetail, setShowDetail] = useState(false);
   const color = scoreColor(pillar.value);
+
+  // Curated bullets: a short one-liner per sub-score (up to 3).
+  const bullets = pillar.breakdown
+    .map((sub) => subLabel(sub))
+    .filter((label): label is string => !!label)
+    .slice(0, 3);
+
   return (
     <Card>
       <div className="flex items-baseline justify-between mb-4">
@@ -157,11 +219,53 @@ function PillarCard({
           </span>
         </div>
       </div>
-      <div className="space-y-4">
-        {pillar.breakdown.map((sub, i) => (
-          <SubScoreRow key={i} name={sub.name} value={sub.value} note={sub.note} />
+
+      <ul className="space-y-2.5">
+        {bullets.map((note, i) => (
+          <li key={i} className="flex items-start gap-2.5">
+            <span
+              className="mt-[6px] w-1.5 h-1.5 rounded-full flex-shrink-0"
+              style={{ background: color }}
+            />
+            <span className="text-[13px] text-white/70 leading-relaxed">{note}</span>
+          </li>
         ))}
-      </div>
+      </ul>
+
+      {pillar.breakdown.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setShowDetail((s) => !s)}
+            className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-medium text-ocean-light/80 hover:text-ocean-light transition-colors"
+          >
+            {showDetail ? "Hide details" : "View details"}
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 12 12"
+              fill="none"
+              className={`transition-transform ${showDetail ? "rotate-180" : ""}`}
+            >
+              <path
+                d="M3 4.5L6 7.5L9 4.5"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+
+          {showDetail && (
+            <div className="mt-4 pt-4 border-t border-white/8 space-y-4">
+              {pillar.breakdown.map((sub, i) => (
+                <SubScoreRow key={i} name={sub.name} value={sub.value} note={sub.note} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </Card>
   );
 }
@@ -198,27 +302,42 @@ export default function ResultsView({ session }: Props) {
   const infos = analysis.flags.filter((f) => f.severity === "info");
   const orderedFlags = [...issues, ...warnings, ...infos];
 
+  const surfyInsights = scores ? deriveSurfyInsights(scores) : [];
+
+  const ctx = analysis.context;
+  const ctxChips = [
+    ctx?.stance && cap(ctx.stance),
+    ctx?.wave_direction && `${cap(ctx.wave_direction)} wave`,
+    ctx?.facing && cap(ctx.facing),
+  ].filter(Boolean) as string[];
+
   return (
     <div className="space-y-5">
-      {/* ── Focus banner ── */}
-      {critique.one_thing && (
-        <div className="rounded-2xl border border-coral/20 bg-gradient-to-br from-coral/10 to-amber-500/5 p-5">
-          <p className="text-[10px] font-medium tracking-[0.1em] uppercase text-coral mb-2">
-            Focus for next session
-          </p>
-          <p
-            className="font-serif text-[18px] text-white leading-snug italic"
-            style={{ fontFamily: "var(--font-serif)" }}
-          >
-            {critique.one_thing}
-          </p>
+      {/* ── Rider/wave context ── */}
+      {ctxChips.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {ctxChips.map((c) => (
+            <span
+              key={c}
+              className="text-[11.5px] text-white/55 bg-white/[0.04] border border-subtle rounded-full px-3 py-1"
+            >
+              {c}
+            </span>
+          ))}
         </div>
       )}
 
-      {/* ── Surfy Score ── */}
+      {/* ── Surfy Score + key insights ── */}
       {scores && (
         <Card>
           <SurfyScoreRing value={scores.surfy_score} label={scores.surfy_label} />
+          {surfyInsights.length > 0 && (
+            <ul className="mt-5 pt-5 border-t border-white/8 space-y-2.5">
+              {surfyInsights.map((insight, i) => (
+                <InsightBullet key={i} insight={insight} />
+              ))}
+            </ul>
+          )}
         </Card>
       )}
 
@@ -230,46 +349,6 @@ export default function ResultsView({ session }: Props) {
           <PillarCard title="Flow" pillar={scores.flow} />
         </div>
       )}
-
-      {/* ── Claude coaching notes ── */}
-      <Card>
-        <div className="flex items-center gap-2.5 mb-4">
-          <div className="w-7 h-7 bg-coral/15 rounded-lg flex items-center justify-center flex-shrink-0">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path
-                d="M7 1L1.5 13h11L7 1z"
-                stroke="#f97316"
-                strokeWidth="1.3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-          <span className="text-[11px] font-medium tracking-[0.07em] uppercase text-white/40">
-            Coaching notes
-          </span>
-        </div>
-        <p
-          className="font-serif text-[17px] text-white/75 leading-relaxed italic"
-          style={{ fontFamily: "var(--font-serif)" }}
-        >
-          &ldquo;{critique.overall}&rdquo;
-        </p>
-
-        {/* Positives */}
-        {critique.positives?.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-4">
-            {critique.positives.map((pos, i) => (
-              <span
-                key={i}
-                className="bg-green-500/10 text-green-400 border border-green-500/20 rounded-full px-3 py-1 text-[12px]"
-              >
-                ✓ {pos}
-              </span>
-            ))}
-          </div>
-        )}
-      </Card>
 
       {/* ── Flags ── */}
       {orderedFlags.length > 0 && (
@@ -285,43 +364,6 @@ export default function ResultsView({ session }: Props) {
           </div>
         </Card>
       )}
-
-      {/* ── Prioritised tips ── */}
-      {critique.tips?.length > 0 && (
-        <Card>
-          <CardTitle>Prioritised tips</CardTitle>
-          <div className="space-y-4">
-            {[...critique.tips]
-              .sort((a, b) => a.priority - b.priority)
-              .map((tip) => (
-                <div key={tip.priority} className="flex gap-3 items-start">
-                  <div
-                    className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 text-[11px] font-medium ${
-                      priorityColor[tip.priority] ?? "bg-white/10 text-white/50"
-                    }`}
-                  >
-                    {tip.priority}
-                  </div>
-                  <div>
-                    <p className="text-[13px] font-medium text-white mb-1">
-                      {tip.title}
-                    </p>
-                    <p className="text-[12px] text-white/45 leading-relaxed">
-                      {tip.detail}
-                    </p>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </Card>
-      )}
     </div>
   );
 }
-
-/* ── Local type mirror (add canonical version to lib/types.ts) ── */
-type PillarScore = {
-  value: number;
-  label: string;
-  breakdown: { name: string; value: number; note: string }[];
-};

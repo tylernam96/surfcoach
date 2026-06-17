@@ -17,6 +17,56 @@ export type Analysis = {
     total_frames?: number;
   };
   scores?: Scores;
+  segments?: Segments;
+  context?: RideContext;
+};
+
+/* ── Rider/wave tags captured at upload ── */
+export type RideContext = {
+  stance?: "regular" | "goofy" | null;
+  wave_direction?: "left" | "right" | null;
+  facing?: "frontside" | "backside" | null;
+};
+
+/* ── Ride segmentation (pop-up, per-turn, timing) ── */
+export type Popup = {
+  detected: boolean;
+  time_to_feet_s: number;
+  first_compression_s: number | null;
+  first_compression_knee: number | null;
+  value: number;
+  label: string;
+  summary: string;
+  note: string;
+};
+
+export type Turn = {
+  index: number;
+  type: string;        // "Bottom turn" | "Top turn" | "Cutback" (estimated)
+  start_s: number;
+  peak_s: number;
+  end_s: number;
+  value: number;
+  label: string;
+  summary: string;
+  note: string;
+};
+
+export type DeadSegment = { start_s: number; end_s: number; duration_s: number };
+
+export type Timing = {
+  turn_count: number;
+  avg_gap_s: number | null;
+  rhythm_consistency: number | null;
+  summary: string;
+  dead_segments: DeadSegment[];
+};
+
+export type Segments = {
+  popup: Popup | null;
+  turns: Turn[];
+  timing: Timing;
+  available: boolean;
 };
 
 export type Tip = {
@@ -50,7 +100,7 @@ export type Session = {
   duration_seconds?: number;
 };
 
-export type SubScore = { name: string; value: number; note: string };
+export type SubScore = { name: string; value: number; summary?: string; note: string };
 export type PillarScore = { value: number; label: string; breakdown: SubScore[] };
 export type Scores = {
   position: PillarScore;

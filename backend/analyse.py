@@ -116,6 +116,7 @@ class Analysis:
     metrics: dict = field(default_factory=dict)
     summary: str = ""
     maneuver_category: str = "general"
+    context: dict = field(default_factory=dict)   # rider/wave tags from upload
 
 
 # ── Core helpers ──────────────────────────────────────────────────────────────
@@ -342,6 +343,7 @@ def analyse_pose_data(
     frame_data: list,
     maneuver: Optional[str] = None,
     fps: float = 30.0,
+    context: Optional[dict] = None,
 ) -> dict:
     """
     Main entry point. Accepts an optional fps parameter for accurate pump
@@ -356,6 +358,7 @@ def analyse_pose_data(
     """
     good     = _good_frames(frame_data)
     category = _maneuver_category(maneuver)
+    context  = context or {}
 
     if len(good) < MIN_FRAMES:
         return asdict(Analysis(
@@ -364,9 +367,10 @@ def analyse_pose_data(
                 "Make sure the surfer is clearly visible throughout the clip."
             ),
             maneuver_category=category,
+            context=context,
         ))
 
-    analysis = Analysis(maneuver_category=category)
+    analysis = Analysis(maneuver_category=category, context=context)
     flags: List[Flag] = []
 
     # ── Raw series ────────────────────────────────────────────────────────────
@@ -666,9 +670,20 @@ def analyse_pose_data(
         lines = "\n".join(f"    - [{f.severity.upper()}] {f.message}" for f in flag_list)
         return f"  {label}:\n{lines}"
 
+    # Rider/wave context (camera-independent) — grounds the AI critique.
+    ctx_bits = []
+    if context.get("stance"):
+        ctx_bits.append(f"Stance: {context['stance']}")
+    if context.get("wave_direction"):
+        ctx_bits.append(f"Wave: {context['wave_direction']}")
+    if context.get("facing"):
+        ctx_bits.append(f"Riding: {context['facing']}")
+    ctx_line = (" | ".join(ctx_bits) + "\n\n") if ctx_bits else "\n"
+
     analysis.summary = (
         f"Analysed {len(good)}/{len(frame_data)} frames | "
-        f"Maneuver: {maneuver_label} | Category: {category}\n\n"
+        f"Maneuver: {maneuver_label} | Category: {category}\n"
+        f"{ctx_line}"
         f"═══ POSITION (Balance & Positioning) ═══\n"
         f"  Stance width: {analysis.metrics['stance_width'].get('mean', '?')} (normalised) | "
         f"Foot bias: {bias} | Rail engagement proxy: {rail_score}\n"

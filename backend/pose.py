@@ -83,6 +83,11 @@ def process_video(path: str, output_path: str = "output.mp4", sample_every: int 
                     # CoM height proxy (hip midpoint y; 0=top, 1=bottom of frame)
                     com_height = round(float(hip_mid[1]), 3)
 
+                    # CoM horizontal position (hip midpoint x; 0=left, 1=right of frame).
+                    # Drives turn segmentation in segmentation.py — direction
+                    # reversals in this signal mark individual turns.
+                    com_x = round(float(hip_mid[0]), 3)
+
                     # Shoulder rotation: angle between shoulder line and hip line in x-z plane
                     # Approximation: difference in x-offset of shoulders vs hips
                     shoulder_rotation = round(
@@ -107,6 +112,7 @@ def process_video(path: str, output_path: str = "output.mp4", sample_every: int 
                         "gaze_down": gaze_down,
                         "stance_width": stance_width,
                         "com_height": com_height,
+                        "com_x": com_x,
                         "shoulder_rotation": shoulder_rotation,
                         "confidence": confidence,
                     }

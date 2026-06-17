@@ -3,6 +3,7 @@
 import { useState, useRef, DragEvent, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+import RideContextPicker, { WaveDirection, Stance } from "@/components/RideContextPicker";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,6 +18,8 @@ export default function VideoUploader() {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [waveDirection, setWaveDirection] = useState<WaveDirection | null>(null);
+  const [stance, setStance] = useState<Stance | null>(null);
 
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault();
@@ -118,6 +121,8 @@ export default function VideoUploader() {
           session_id: session.id,
           video_url: signedData.signedUrl, // backend uses this to download once
           user_id: authSession.user.id,
+          wave_direction: waveDirection,
+          stance,
         }),
       });
 
@@ -245,6 +250,21 @@ console.log("Response body:", responseText);
       {/* Error */}
       {error && (
         <p className="text-red-400 text-sm text-center mt-3">{error}</p>
+      )}
+
+      {/* Ride context — optional taps that sharpen the analysis */}
+      {file && !uploading && (
+        <div className="mt-5 bg-white/[0.02] border border-subtle rounded-2xl p-4">
+          <p className="text-[12px] text-white/45 mb-3">
+            Optional — helps us read the wave (frontside vs backside).
+          </p>
+          <RideContextPicker
+            waveDirection={waveDirection}
+            stance={stance}
+            onWaveDirection={setWaveDirection}
+            onStance={setStance}
+          />
+        </div>
       )}
 
       {/* Upload progress */}

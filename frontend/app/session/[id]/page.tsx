@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 import { Session } from "@/lib/types";
-import VideoPlayer from "@/components/VideoPlayer";
+import VideoPlayer, { PlayerHandle } from "@/components/VideoPlayer";
 import ResultsView from "@/components/ResultsView";
+import TurnBreakdown from "@/components/TurnBreakdown";
 import { Nav } from "@/components/UI";
 
 const supabase = createClient(
@@ -58,6 +59,7 @@ export default function SessionPage() {
   const [loading, setLoading] = useState(true);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [annotatedUrl, setAnnotatedUrl] = useState<string | null>(null);
+  const playerRef = useRef<PlayerHandle>(null);
 
   const refreshSignedUrls = async (s: Session) => {
     const EXPIRY = 60 * 60 * 24 * 7; // 7 days
@@ -135,9 +137,20 @@ export default function SessionPage() {
           {/* Left: video + processing / error states */}
           <div className="space-y-4">
             <VideoPlayer
+              ref={playerRef}
               originalUrl={videoUrl}
               annotatedUrl={annotatedUrl}
+              segments={session.analysis?.segments ?? null}
             />
+
+            {session.status === "complete" &&
+              session.analysis?.segments?.available && (
+                <TurnBreakdown
+                  segments={session.analysis.segments}
+                  onPlayTurn={(start, end) => playerRef.current?.playRange(start, end)}
+                  onSeek={(time) => playerRef.current?.seek(time)}
+                />
+              )}
 
             {session.status === "processing" && (
               <div className="bg-ocean-light/8 border border-ocean-light/20 rounded-2xl p-6 text-center">

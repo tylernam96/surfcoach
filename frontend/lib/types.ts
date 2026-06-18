@@ -21,6 +21,18 @@ export type Analysis = {
   context?: RideContext;
 };
 
+/* ── Rider corrections fed back into segmentation (Tier 2 tagging) ── */
+export type TurnLabel = {
+  type?: string;             // "Bottom turn" | "Top turn" | "Cutback"
+  mark?: "best" | "worst";
+};
+
+export type ManualTags = {
+  takeoff_s?: number;                       // tapped to-feet time (item 4)
+  clip?: [number, number];                  // [start_s, end_s] wave trim (item 6)
+  turn_labels?: Record<string, TurnLabel>;  // turn corrections (item 5)
+};
+
 /* ── Rider/wave tags captured at upload ── */
 export type RideContext = {
   stance?: "regular" | "goofy" | null;
@@ -31,6 +43,8 @@ export type RideContext = {
 /* ── Ride segmentation (pop-up, per-turn, timing) ── */
 export type Popup = {
   detected: boolean;
+  /** "manual" when the rider tapped the takeoff, "auto" when pose-detected. */
+  source?: "manual" | "auto";
   time_to_feet_s: number;
   first_compression_s: number | null;
   first_compression_knee: number | null;
@@ -50,6 +64,7 @@ export type Turn = {
   label: string;
   summary: string;
   note: string;
+  mark?: "best" | "worst";   // rider-marked best/worst turn (item 5)
 };
 
 export type DeadSegment = { start_s: number; end_s: number; duration_s: number };
@@ -95,6 +110,7 @@ export type Session = {
   error_message?: string;
   analysis?: Analysis;
   critique?: Critique;
+  manual_tags?: ManualTags;
   created_at?: string;
   label?: string;
   duration_seconds?: number;

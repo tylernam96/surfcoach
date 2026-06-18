@@ -1,7 +1,7 @@
 {
   "/session/[id]/page": "app/session/[id]/page.js",
+  "/trial/[token]/page": "app/trial/[token]/page.js",
   "/trial/page": "app/trial/page.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/trial/[token]/page": "app/trial/[token]/page.js",
   "/trial/result/[id]/page": "app/trial/result/[id]/page.js"
 }

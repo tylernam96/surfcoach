@@ -19,6 +19,8 @@ type Props = {
   annotatedUrl?: string | null;
   onVideoError?: () => void;
   segments?: Segments | null;
+  /** Emits the current playhead time + duration so a parent can drive tagging. */
+  onTimeUpdate?: (currentTime: number, duration: number) => void;
 };
 
 /** Imperative handle so the turn breakdown can drive playback. */
@@ -411,7 +413,7 @@ function roundRect(
 
 // ── Main component ─────────────────────────────────────────────────────────────
 const VideoPlayer = forwardRef<PlayerHandle, Props>(function VideoPlayer(
-  { originalUrl, annotatedUrl, onVideoError, segments },
+  { originalUrl, annotatedUrl, onVideoError, segments, onTimeUpdate },
   ref
 ) {
   const [playing, setPlaying] = useState(false);
@@ -629,11 +631,13 @@ console.log("initialize", pose.initialize);
     const pct = (v.currentTime / v.duration) * 100;
     setProgress(pct);
     setCurrentTime(v.currentTime);
+    onTimeUpdate?.(v.currentTime, v.duration);
   };
 
   const handleLoadedMetadata = () => {
     if (!videoRef.current) return;
     setDuration(videoRef.current.duration);
+    onTimeUpdate?.(videoRef.current.currentTime, videoRef.current.duration);
     const { videoWidth, videoHeight } = videoRef.current;
     setIsPortrait(videoHeight > videoWidth);
     if (canvasRef.current) {

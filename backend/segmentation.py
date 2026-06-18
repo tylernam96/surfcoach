@@ -90,14 +90,28 @@ def _empty() -> dict:
 
 # ── Pop-up / takeoff ────────────────────────────────────────────────────────--
 
-def _detect_popup(t: np.ndarray, com_h: np.ndarray, knee: np.ndarray) -> Optional[dict]:
+def _detect_popup(
+    t: np.ndarray,
+    com_h: np.ndarray,
+    knee: np.ndarray,
+    manual_feet_s: Optional[float] = None,
+) -> Optional[dict]:
     """
-    Detect a takeoff at the start of the clip.
+    Grade the takeoff at the start of the clip.
 
-    During a pop-up the rider is low/horizontal (hip-y large), then rises to a
-    riding stance (hip-y settles to a baseline). We only report when the opening
-    of the clip is clearly lower than the riding baseline — otherwise the clip
-    likely starts mid-ride and there's no takeoff to grade.
+    Two modes:
+
+      • Manual (manual_feet_s given) — the rider tapped the exact frame they got
+        to their feet. We trust that completely: it removes the unreliable
+        pose-only detection below, which is the whole point of the tap. We still
+        auto-measure the first compression after that anchor (reliable from pose)
+        and score with the same formula.
+
+      • Auto (manual_feet_s is None) — best-effort. During a pop-up the rider is
+        low/horizontal (hip-y large), then rises to a riding stance (hip-y
+        settles to a baseline). We only report when the opening of the clip is
+        clearly lower than the riding baseline — otherwise the clip likely starts
+        mid-ride and there's no takeoff to grade.
     """
     if len(t) < MIN_FRAMES:
         return None
@@ -111,25 +125,33 @@ def _detect_popup(t: np.ndarray, com_h: np.ndarray, knee: np.ndarray) -> Optiona
     baseline = float(np.median(mid))
     spread = float(np.std(com_h)) or 1e-6
 
-    # Opening window: first ~1.5s.
-    open_mask = (t - t[0]) <= 1.5
-    if open_mask.sum() < 3:
-        return None
-    open_peak = float(np.max(com_h[open_mask]))  # lowest body point (largest y)
+    manual = manual_feet_s is not None
+    if manual:
+        # Trust the tap. feet_idx = frame nearest the tapped time; time-to-feet
+        # is measured from the ride's start (t[0] — already wave-trimmed if the
+        # ride was trimmed upstream). No gating: a human marked it, so it exists.
+        feet_idx = int(np.argmin(np.abs(t - float(manual_feet_s))))
+        time_to_feet = round(max(0.0, float(manual_feet_s) - float(t[0])), 2)
+    else:
+        # Opening window: first ~1.5s.
+        open_mask = (t - t[0]) <= 1.5
+        if open_mask.sum() < 3:
+            return None
+        open_peak = float(np.max(com_h[open_mask]))  # lowest body point (largest y)
 
-    # Require the opening to sit clearly lower (larger y) than the baseline.
-    if open_peak < baseline + 0.5 * spread:
-        return None
+        # Require the opening to sit clearly lower (larger y) than the baseline.
+        if open_peak < baseline + 0.5 * spread:
+            return None
 
-    # Time-to-feet: first frame where hip-y has risen back to the baseline band.
-    feet_idx = None
-    for i in range(len(com_h)):
-        if com_h[i] <= baseline + 0.2 * spread:
-            feet_idx = i
-            break
-    if feet_idx is None or t[feet_idx] - t[0] > 2.5:
-        return None
-    time_to_feet = round(float(t[feet_idx] - t[0]), 2)
+        # Time-to-feet: first frame where hip-y has risen back to the baseline band.
+        feet_idx = None
+        for i in range(len(com_h)):
+            if com_h[i] <= baseline + 0.2 * spread:
+                feet_idx = i
+                break
+        if feet_idx is None or t[feet_idx] - t[0] > 2.5:
+            return None
+        time_to_feet = round(float(t[feet_idx] - t[0]), 2)
 
     # First compression after standing = deepest knee bend in the ~1.5s window
     # right after the rider gets to their feet (not the whole rest of the ride).
@@ -163,6 +185,7 @@ def _detect_popup(t: np.ndarray, com_h: np.ndarray, knee: np.ndarray) -> Optiona
 
     return {
         "detected": True,
+        "source": "manual" if manual else "auto",
         "time_to_feet_s": time_to_feet,
         "first_compression_s": first_comp_s,
         "first_compression_knee": first_comp_knee,
@@ -275,11 +298,16 @@ def segment_ride(
     frame_data: list,
     fps: float = 30.0,
     category: str = "general",
+    takeoff_s: Optional[float] = None,
 ) -> dict:
     """
     Returns the segmentation dict described in the module docstring.
     Safe on any input — returns empty (available=False) when the data can't
     support segmentation (no com_x, too few frames, no clear turns).
+
+    takeoff_s — optional rider-tapped time (seconds) of the moment they got to
+    their feet. When given, it overrides the best-effort pop-up detection and
+    grades the takeoff from that exact anchor instead.
     """
     good = [f for f in frame_data if f.get("confidence", 0) >= MIN_CONFIDENCE]
     if len(good) < MIN_FRAMES or not all("com_x" in f for f in good[:3]):
@@ -354,7 +382,7 @@ def segment_ride(
         })
 
     # ── Pop-up ────────────────────────────────────────────────────────────────
-    popup = _detect_popup(t, com_h, knee)
+    popup = _detect_popup(t, com_h, knee, manual_feet_s=takeoff_s)
 
     # ── Timing / linking ──────────────────────────────────────────────────────
     timing = _timing(t, com_x, com_h, turns, dt)

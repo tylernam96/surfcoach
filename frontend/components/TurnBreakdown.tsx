@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Segments, Turn } from "@/lib/types";
+import { Segments, Turn, TurnLabel } from "@/lib/types";
 import { Card, CardTitle } from "@/components/UI";
+
+const TURN_TYPES = ["Bottom turn", "Top turn", "Cutback"] as const;
 
 /* ── Score → colour (1–100) ── */
 function scoreColor(v: number): string {
@@ -27,15 +29,93 @@ type Props = {
   onPlayTurn: (start: number, end: number) => void;
   /** Jump the playhead to a timestamp (used for dead-time stalls). */
   onSeek: (time: number) => void;
+  /** Persist a turn correction (relabel / best-worst), or null to clear it. */
+  onLabelTurn?: (index: number, label: TurnLabel | null) => void | Promise<void>;
 };
+
+const markStyle: Record<"best" | "worst", string> = {
+  best: "bg-green-500/15 text-green-400 border-green-500/25",
+  worst: "bg-red-500/15 text-red-400 border-red-500/25",
+};
+
+/* ── Relabel + best/worst controls (rider corrections → training data) ── */
+function TurnLabelControls({
+  turn,
+  onLabel,
+}: {
+  turn: Turn;
+  onLabel: (index: number, label: TurnLabel | null) => void | Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  const send = async (label: TurnLabel | null) => {
+    setBusy(true);
+    try {
+      await onLabel(turn.index, label);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Toggling the active mark off clears it; otherwise keep the (possibly
+  // corrected) type alongside the new mark so the full label is stored.
+  const setMark = (mark: "best" | "worst") =>
+    send({ type: turn.type, mark: turn.mark === mark ? undefined : mark });
+  const setType = (type: string) => send({ type, mark: turn.mark });
+
+  return (
+    <div className="pt-3 border-t border-white/8 space-y-2.5">
+      <p className="text-[10px] uppercase tracking-wide text-white/35">
+        Wrong call? Fix it — your corrections train the classifier
+      </p>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {TURN_TYPES.map((t) => {
+          const active = turn.type === t;
+          const accent = turnColor(t);
+          return (
+            <button
+              key={t}
+              onClick={() => !active && setType(t)}
+              disabled={busy}
+              className="text-[11px] rounded-full px-2.5 py-1 border transition-colors disabled:opacity-50"
+              style={
+                active
+                  ? { background: `${accent}22`, color: accent, borderColor: `${accent}55` }
+                  : { color: "rgba(255,255,255,0.5)", borderColor: "rgba(255,255,255,0.12)" }
+              }
+            >
+              {t}
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-1.5">
+        {(["best", "worst"] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => setMark(m)}
+            disabled={busy}
+            className={`text-[11px] rounded-full px-2.5 py-1 border transition-colors disabled:opacity-50 ${
+              turn.mark === m ? markStyle[m] : "text-white/50 border-white/12 hover:text-white/80"
+            }`}
+          >
+            {turn.mark === m ? `✓ My ${m} turn` : `Mark ${m}`}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 /* ── A single expandable turn row ── */
 function TurnRow({
   turn,
   onPlay,
+  onLabel,
 }: {
   turn: Turn;
   onPlay: () => void;
+  onLabel?: (index: number, label: TurnLabel | null) => void | Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   const color = scoreColor(turn.value);
@@ -55,9 +135,16 @@ function TurnRow({
         </span>
 
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-medium text-white leading-tight">
+          <p className="text-[13px] font-medium text-white leading-tight flex items-center gap-1.5">
             {turn.type}
-            <span className="text-white/30 font-normal ml-1.5 text-[11px] tabular-nums">
+            {turn.mark && (
+              <span
+                className={`text-[9px] uppercase tracking-wide rounded px-1 py-0.5 border ${markStyle[turn.mark]}`}
+              >
+                {turn.mark}
+              </span>
+            )}
+            <span className="text-white/30 font-normal ml-1 text-[11px] tabular-nums">
               {turn.start_s.toFixed(1)}–{turn.end_s.toFixed(1)}s
             </span>
           </p>
@@ -96,13 +183,14 @@ function TurnRow({
             </svg>
             Watch this turn
           </button>
+          {onLabel && <TurnLabelControls turn={turn} onLabel={onLabel} />}
         </div>
       )}
     </div>
   );
 }
 
-export default function TurnBreakdown({ segments, onPlayTurn, onSeek }: Props) {
+export default function TurnBreakdown({ segments, onPlayTurn, onSeek, onLabelTurn }: Props) {
   if (!segments?.available) return null;
 
   const { popup, turns, timing } = segments;
@@ -149,11 +237,16 @@ export default function TurnBreakdown({ segments, onPlayTurn, onSeek }: Props) {
             </CardTitle>
           </div>
           <p className="text-[11px] text-white/35 mb-3 leading-relaxed">
-            Each turn scored individually. Types are estimated from your position on the wave. Tap a turn to expand, then watch it back.
+            Each turn scored individually. Types are estimated from your position on the wave — tap a turn to expand, watch it back, and correct the call if it&apos;s wrong.
           </p>
           <div className="space-y-2">
             {turns.map((t) => (
-              <TurnRow key={t.index} turn={t} onPlay={() => onPlayTurn(t.start_s, t.end_s)} />
+              <TurnRow
+                key={t.index}
+                turn={t}
+                onPlay={() => onPlayTurn(t.start_s, t.end_s)}
+                onLabel={onLabelTurn}
+              />
             ))}
           </div>
         </Card>

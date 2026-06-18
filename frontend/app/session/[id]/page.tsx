@@ -4,11 +4,13 @@ import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
-import { Session } from "@/lib/types";
+import { Session, ManualTags, TurnLabel } from "@/lib/types";
 import VideoPlayer, { PlayerHandle } from "@/components/VideoPlayer";
 import ResultsView from "@/components/ResultsView";
 import TurnBreakdown from "@/components/TurnBreakdown";
+import TaggingTimeline from "@/components/TaggingTimeline";
 import { Nav } from "@/components/UI";
+import { resegment } from "@/lib/api";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -59,7 +61,48 @@ export default function SessionPage() {
   const [loading, setLoading] = useState(true);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [annotatedUrl, setAnnotatedUrl] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [tagError, setTagError] = useState<string | null>(null);
   const playerRef = useRef<PlayerHandle>(null);
+
+  // Apply a partial correction on top of the stored manual_tags, re-run the
+  // backend analysis, and patch the session in place so every panel (player,
+  // scores, turn breakdown) re-renders immediately.
+  const applyCorrection = async (patch: Partial<ManualTags>) => {
+    const current = session?.manual_tags ?? {};
+    const next: ManualTags = { ...current, ...patch };
+    // Strip cleared keys so absence == "no override" on the backend.
+    (Object.keys(next) as (keyof ManualTags)[]).forEach((k) => {
+      const v = next[k];
+      if (v == null || (typeof v === "object" && Object.keys(v).length === 0)) {
+        delete next[k];
+      }
+    });
+
+    try {
+      const { analysis } = await resegment({ sessionId: id, manualTags: next });
+      setTagError(null);
+      setSession((prev) => (prev ? { ...prev, analysis, manual_tags: next } : prev));
+    } catch (e) {
+      // Surface it instead of leaving an unhandled rejection. The most common
+      // cause is the manual_tags / turn_labels migrations not being applied yet.
+      setTagError(e instanceof Error ? e.message : "Failed to save correction");
+    }
+  };
+
+  const handleSaveTakeoff = (takeoffS: number | null) =>
+    applyCorrection({ takeoff_s: takeoffS ?? undefined });
+
+  const handleSaveClip = (clip: [number, number] | null) =>
+    applyCorrection({ clip: clip ?? undefined });
+
+  const handleLabelTurn = (index: number, label: TurnLabel | null) => {
+    const turn_labels = { ...(session?.manual_tags?.turn_labels ?? {}) };
+    if (label && (label.type || label.mark)) turn_labels[String(index)] = label;
+    else delete turn_labels[String(index)];
+    return applyCorrection({ turn_labels });
+  };
 
   const refreshSignedUrls = async (s: Session) => {
     const EXPIRY = 60 * 60 * 24 * 7; // 7 days
@@ -141,7 +184,30 @@ export default function SessionPage() {
               originalUrl={videoUrl}
               annotatedUrl={annotatedUrl}
               segments={session.analysis?.segments ?? null}
+              onTimeUpdate={(t, d) => {
+                setCurrentTime(t);
+                setDuration(d);
+              }}
             />
+
+            {session.status === "complete" &&
+              session.analysis?.segments?.available && (
+                <TaggingTimeline
+                  duration={duration}
+                  currentTime={currentTime}
+                  popup={session.analysis.segments.popup}
+                  clip={session.manual_tags?.clip ?? null}
+                  onSeek={(time) => playerRef.current?.seek(time)}
+                  onSaveTakeoff={handleSaveTakeoff}
+                  onSaveClip={handleSaveClip}
+                />
+              )}
+
+            {tagError && (
+              <div className="bg-red-500/8 border border-red-500/20 rounded-xl px-4 py-3">
+                <p className="text-red-400/90 text-[12.5px] leading-snug">{tagError}</p>
+              </div>
+            )}
 
             {session.status === "complete" &&
               session.analysis?.segments?.available && (
@@ -149,6 +215,7 @@ export default function SessionPage() {
                   segments={session.analysis.segments}
                   onPlayTurn={(start, end) => playerRef.current?.playRange(start, end)}
                   onSeek={(time) => playerRef.current?.seek(time)}
+                  onLabelTurn={handleLabelTurn}
                 />
               )}
 

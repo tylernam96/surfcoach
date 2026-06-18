@@ -3,8 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uuid
 import os
+import traceback
 from supabase_client import get_supabase
-from worker import process_video_job
+from worker import process_video_job, resegment_session
 
 app = FastAPI(title="SurfCoach API")
 
@@ -27,6 +28,20 @@ class AnalyseRequest(BaseModel):
 class AnalyseResponse(BaseModel):
     session_id: str
     status: str
+
+class TurnLabel(BaseModel):
+    type: str | None = None              # "Bottom turn" | "Top turn" | "Cutback"
+    mark: str | None = None              # "best" | "worst"
+
+class ManualTags(BaseModel):
+    takeoff_s: float | None = None       # tapped to-feet time (item 4)
+    clip: list[float] | None = None      # [start_s, end_s] wave trim (item 6)
+    turn_labels: dict[str, TurnLabel] | None = None   # turn corrections (item 5)
+
+class ResegmentRequest(BaseModel):
+    session_id: str
+    # Full desired correction set (idempotent — replaces what's stored).
+    manual_tags: ManualTags = ManualTags()
 
 @app.get("/health")
 def health():
@@ -58,6 +73,30 @@ async def analyse(req: AnalyseRequest, background_tasks: BackgroundTasks):
     )
 
     return AnalyseResponse(session_id=req.session_id, status="processing")
+
+@app.post("/resegment")
+def resegment(req: ResegmentRequest):
+    """
+    Re-run analysis with rider corrections: takeoff tap (4), turn relabels (5),
+    and wave trim (6). Synchronous — it reuses the stored pose data, so there's
+    no MediaPipe call (and no Claude call unless a trim changed the analysis).
+    Returns the updated analysis (segments + scores).
+    """
+    try:
+        analysis = resegment_session(
+            req.session_id,
+            manual_tags=req.manual_tags.model_dump(exclude_none=True),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        # Surface the real cause as a 500 *through* FastAPI's handler so the CORS
+        # headers are still attached — an unhandled exception escapes the CORS
+        # middleware and the browser misreports it as a CORS error.
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Resegment failed: {e}")
+    return {"session_id": req.session_id, "analysis": analysis}
+
 
 @app.get("/session/{session_id}")
 def get_session(session_id: str):

@@ -66,6 +66,142 @@ def _derive_facing(stance: str | None, wave_direction: str | None) -> str | None
     return None
 
 
+def _window_frames(frame_data: list, clip) -> list:
+    """Restrict the pose series to a [start_s, end_s] wave window (item 6).
+
+    Trimming to one wave focuses every downstream metric — dead-time, pump
+    cadence, turns — on the ride itself instead of the paddle-out or a second
+    wave, which is what produces false 'stalls'. Times stay in original-video
+    coordinates so timeline markers still line up with the full clip.
+    """
+    if not clip or len(clip) != 2:
+        return frame_data
+    lo, hi = float(clip[0]), float(clip[1])
+    if hi <= lo:
+        return frame_data
+    return [f for f in frame_data if lo <= float(f.get("time_s", 0)) <= hi]
+
+
+def _apply_turn_labels(segments: dict, overrides: dict | None) -> list[dict]:
+    """Apply rider turn corrections (item 5) onto freshly computed turns.
+
+    Overrides are keyed by 1-based turn index → {type?, mark?}. We capture the
+    pre-override (predicted) type so the correction can be stored as a training
+    label. Returns a list of label records for the turn_labels table.
+    """
+    labels: list[dict] = []
+    if not overrides:
+        return labels
+    for turn in segments.get("turns", []):
+        ov = overrides.get(str(turn["index"])) or overrides.get(turn["index"])
+        if not ov:
+            continue
+        predicted = turn.get("type")
+        corrected = ov.get("type") or predicted
+        mark = ov.get("mark")
+        if ov.get("type"):
+            turn["type"] = ov["type"]
+        if mark:
+            turn["mark"] = mark
+        labels.append({
+            "turn_index": turn["index"],
+            "predicted_type": predicted,
+            "corrected_type": corrected,
+            "mark": mark,
+            "start_s": turn.get("start_s"),
+            "peak_s": turn.get("peak_s"),
+            "end_s": turn.get("end_s"),
+        })
+    return labels
+
+
+def resegment_session(session_id: str, manual_tags: dict | None = None) -> dict:
+    """
+    Re-run analysis on an already-analysed session using rider corrections —
+    WITHOUT re-running MediaPipe. The per-frame pose series is persisted on the
+    session row (`frame_data`), so this is cheap and fast.
+
+    `manual_tags` is the FULL desired correction set (idempotent — replaces what
+    was stored):
+        { "takeoff_s": float, "clip": [start_s, end_s], "turn_labels": {...} }
+
+    What gets recomputed:
+      • segments — always (takeoff anchor + clip window + turn overrides).
+      • metrics/scores — always, on the (possibly windowed) frames. Deterministic
+        and cheap; this is what makes a trim actually move the scores.
+      • critique — only when the analysis text materially changes (i.e. a trim),
+        so turn relabels / takeoff taps don't trigger the (external) Claude call.
+
+    Returns the updated analysis dict (segments + scores).
+    """
+    supabase = get_supabase()
+    manual_tags = manual_tags or {}
+
+    row = (
+        supabase.table("sessions")
+        .select("frame_data, analysis, critique")
+        .eq("id", session_id)
+        .single()
+        .execute()
+    )
+    if not row.data:
+        raise ValueError(f"Session {session_id} not found")
+
+    frame_data = row.data.get("frame_data")
+    if not frame_data:
+        raise ValueError(
+            "No pose data stored for this session — re-run the full analysis first."
+        )
+
+    old_analysis = row.data.get("analysis") or {}
+    context = old_analysis.get("context") or {}
+
+    # ── Window to the chosen wave, then re-derive everything from those frames ─
+    clip = manual_tags.get("clip")
+    frames = _window_frames(frame_data, clip)
+    if len(frames) < 1:
+        frames = frame_data  # degenerate trim — fall back to the whole clip
+
+    analysis = analyse_pose_data(frames, context=context)
+    analysis["scores"] = compute_scores(analysis)
+    segments = segment_ride(
+        frames,
+        category=analysis.get("maneuver_category", "general"),
+        takeoff_s=manual_tags.get("takeoff_s"),
+    )
+
+    # ── Turn corrections: apply live + persist as training data ───────────────
+    turn_label_rows = _apply_turn_labels(segments, manual_tags.get("turn_labels"))
+    analysis["segments"] = segments
+
+    # Critique only re-runs when the windowed analysis actually differs — keeps
+    # the external call off the path for takeoff taps and turn relabels.
+    if analysis.get("summary") != old_analysis.get("summary"):
+        critique = get_surf_critique(analysis)
+    else:
+        critique = row.data.get("critique")
+
+    supabase.table("sessions").update({
+        "analysis": analysis,
+        "critique": critique,
+        "manual_tags": manual_tags,
+    }).eq("id", session_id).execute()
+
+    # Upsert training labels (one row per corrected turn).
+    if turn_label_rows:
+        supabase.table("turn_labels").upsert(
+            [{"session_id": session_id, **r} for r in turn_label_rows],
+            on_conflict="session_id,turn_index",
+        ).execute()
+
+    print(
+        f"[{session_id}] Re-segmented "
+        f"(takeoff={manual_tags.get('takeoff_s')}, clip={clip}, "
+        f"labels={len(turn_label_rows)}) ✓"
+    )
+    return analysis
+
+
 def process_video_job(
     session_id: str,
     video_url: str,
